@@ -26,7 +26,9 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CircleDot,
+  GitFork,
   History,
+  List,
   Loader2,
   PauseCircle,
   PlayCircle,
@@ -42,7 +44,42 @@ import {
   type BuilderState,
 } from "./flow-editor-state";
 
-export function EditorHeader() {
+function SegButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors",
+        active
+          ? "bg-card text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+export function EditorHeader({
+  view,
+  onViewChange,
+}: {
+  view?: "canvas" | "list";
+  onViewChange?: (view: "canvas" | "list") => void;
+}) {
   const router = useRouter();
   const {
     flow,
@@ -58,7 +95,7 @@ export function EditorHeader() {
   } = useFlowEditor();
 
   return (
-    <div className="flex flex-col gap-1.5 px-6 pt-5">
+    <div className="flex flex-col gap-1.5 px-6 py-3.5 border-b border-border bg-card/30 shrink-0">
       <div className="flex flex-wrap items-center gap-3">
         {/* ---- left: back · icon · name · status · edited ---- */}
         <button
@@ -82,6 +119,28 @@ export function EditorHeader() {
           className="min-w-[120px] max-w-[340px] rounded-lg border border-transparent bg-transparent px-2 py-1 text-lg font-bold leading-tight tracking-tight text-foreground outline-none transition-colors hover:bg-muted focus:border-primary focus:bg-transparent focus:shadow-[0_0_0_3px_var(--primary-soft)]"
         />
         <StatusChip status={state.status} />
+
+        {view && onViewChange && (
+          <div
+            role="group"
+            aria-label="Editor view"
+            className="inline-flex gap-0.5 rounded-lg border border-border bg-muted p-0.5 ml-2"
+          >
+            <SegButton
+              active={view === "canvas"}
+              onClick={() => onViewChange("canvas")}
+              icon={<GitFork className="h-3.5 w-3.5" />}
+              label="Canvas"
+            />
+            <SegButton
+              active={view === "list"}
+              onClick={() => onViewChange("list")}
+              icon={<List className="h-3.5 w-3.5" />}
+              label="Lista"
+            />
+          </div>
+        )}
+
         {dirty && (
           <span
             className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-amber-300"

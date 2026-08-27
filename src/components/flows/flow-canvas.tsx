@@ -161,15 +161,15 @@ function FlowNodeCard({ data, selected }: NodeProps) {
           '--nc-text': c.text,
           borderColor: selected ? c.solid : undefined,
           boxShadow: selected
-            ? `0 0 0 1px ${c.solid}, 0 14px 36px -12px ${c.ring}`
+            ? `0 0 0 1px ${c.solid}, 0 10px 25px -10px ${c.ring}`
             : undefined,
         } as React.CSSProperties
       }
       className={cn(
-        'bg-card relative max-w-[260px] min-w-[220px] rounded-xl border px-3.5 py-3 text-left shadow-[0_2px_6px_rgba(0,0,0,0.18)] transition-[box-shadow,border-color]',
+        'bg-card relative max-w-[260px] min-w-[220px] rounded-xl border border-l-4 px-3.5 py-3 text-left transition-[box-shadow,border-color]',
         selected
           ? 'border-[var(--nc)]'
-          : 'border-border hover:border-[var(--nc-ring)]',
+          : 'border-border border-l-[var(--nc)] hover:border-[var(--nc-ring)]',
         // Flash overrides hover/selected colors briefly. Tailwind's
         // built-in `animate-pulse` is too gentle; a ring with the
         // amber accent matches the list view's flash semantics.
@@ -180,20 +180,19 @@ function FlowNodeCard({ data, selected }: NodeProps) {
         <Handle
           type="target"
           position={Position.Left}
-          className="!bg-card !h-2.5 !w-2.5 !border-2 !border-[var(--nc-ring)]"
+          className="!bg-background !h-2.5 !w-2.5 !border-2 !border-[var(--nc)] hover:scale-125 transition-transform"
         />
       )}
 
       <div className="flex items-center gap-2">
         <NodeIconChip
           type={node.node_type}
-          size={24}
-          iconSize={14}
+          size={20}
+          iconSize={12}
           className="rounded-md"
         />
         <span
-          className="truncate text-[10.5px] font-semibold tracking-wider uppercase"
-          style={{ color: c.text }}
+          className="truncate text-[11px] font-bold tracking-wide text-foreground"
         >
           {t(`nodes.${node.node_type}.label`)}
         </span>
@@ -203,23 +202,21 @@ function FlowNodeCard({ data, selected }: NodeProps) {
           </span>
         )}
       </div>
-      <div className="text-muted-foreground mt-2 truncate font-mono text-[11px]">
-        {node.node_key}
-      </div>
+
       {summary && (
-        <div className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-relaxed">
+        <div className="text-muted-foreground mt-2 line-clamp-3 text-[12px] leading-relaxed font-medium bg-muted/40 p-2 rounded-lg border border-border/40">
           {summary}
         </div>
       )}
 
       {isMultiSlot && (
-        <div className="border-border mt-2.5 flex flex-col gap-1 border-t pt-2.5">
+        <div className="border-border mt-2.5 flex flex-col gap-1.5 border-t pt-2.5">
           {slots.map((slot) => (
             <div
               key={slot.id}
-              className="text-muted-foreground relative flex items-center justify-between gap-2 rounded px-1 py-0.5 text-[11px]"
+              className="text-muted-foreground relative flex items-center justify-between gap-2 rounded px-1.5 py-0.5 text-[11px] bg-muted/20 hover:bg-muted/40 transition-colors"
             >
-              <span className="truncate" title={slot.label}>
+              <span className="truncate font-medium" title={slot.label}>
                 {slot.label}
               </span>
               <Handle
@@ -233,7 +230,7 @@ function FlowNodeCard({ data, selected }: NodeProps) {
                 // sits flush with the right edge of the card instead
                 // of floating at vertical center. The negative offset
                 // matches the card's px-3 + the handle's own radius.
-                className="!bg-card !relative !top-auto !right-auto !h-2.5 !w-2.5 !translate-x-[14px] !transform-none !border-2"
+                className="!bg-background !relative !top-auto !right-auto !h-2.5 !w-2.5 !translate-x-[14px] !transform-none !border-2 hover:scale-125 transition-transform"
               />
             </div>
           ))}
@@ -246,7 +243,7 @@ function FlowNodeCard({ data, selected }: NodeProps) {
           id={slots[0].id}
           position={Position.Right}
           style={{ borderColor: c.solid }}
-          className="!bg-card !h-2.5 !w-2.5 !border-2"
+          className="!bg-background !h-2.5 !w-2.5 !border-2 hover:scale-125 transition-transform"
         />
       )}
     </div>
@@ -371,11 +368,12 @@ function FlowCanvasInner() {
       sourceHandle: e.sourceHandle,
       label: e.label,
       // Mode-aware via CSS tokens so edge chrome flips with light/dark.
-      labelStyle: { fill: 'var(--muted-foreground)', fontSize: 11 },
+      labelStyle: { fill: 'var(--muted-foreground)', fontSize: 11, fontWeight: '500' },
       labelBgStyle: { fill: 'var(--card)' },
-      labelBgPadding: [4, 2] as [number, number],
-      labelBgBorderRadius: 4,
-      style: { stroke: 'var(--border)', strokeWidth: 1.5 },
+      labelBgPadding: [6, 3] as [number, number],
+      labelBgBorderRadius: 6,
+      style: { stroke: 'var(--border)', strokeWidth: 2, strokeDasharray: '5,5' },
+      animated: true,
     }));
 
     return rfEdges;

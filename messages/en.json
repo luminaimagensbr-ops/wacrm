@@ -38,7 +38,9 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "menuCrm": "CRM & Inbox",
+    "menuAutomation": "Automations & AI"
   },
   "Header": {
     "dashboard": "Dashboard",

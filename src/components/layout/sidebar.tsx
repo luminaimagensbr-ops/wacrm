@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
@@ -10,6 +10,8 @@ import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
   Bot,
+  ChevronLeft,
+  ChevronRight,
   Crown,
   GitBranch,
   LayoutDashboard,
@@ -78,6 +80,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
 interface NavItem {
   href: string;
   labelKey: string;
@@ -89,12 +98,20 @@ interface NavItem {
   beta?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
+const dashboardItem: NavItem = {
+  href: "/dashboard",
+  labelKey: "dashboard",
+  icon: LayoutDashboard,
+};
+
+const crmItems: NavItem[] = [
   { href: "/inbox", labelKey: "inbox", icon: MessageSquare },
   { href: "/notifications", labelKey: "notifications", icon: Bell },
   { href: "/contacts", labelKey: "contacts", icon: Users },
   { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
+];
+
+const automationItems: NavItem[] = [
   { href: "/broadcasts", labelKey: "broadcasts", icon: Radio },
   { href: "/automations", labelKey: "automations", icon: Zap },
   { href: "/flows", labelKey: "flows", icon: Workflow, beta: true },
@@ -113,12 +130,79 @@ interface SidebarProps {
 
 import { useTranslations } from "next-intl";
 
+function SidebarIconLink({
+  item,
+  t,
+  pathname,
+  unreadCount = 0,
+  notificationCount = 0,
+}: {
+  item: NavItem;
+  t: any;
+  pathname: string;
+  unreadCount?: number;
+  notificationCount?: number;
+}) {
+  const isActive =
+    pathname === item.href ||
+    (item.href !== "/dashboard" && pathname.startsWith(item.href));
+
+  const hasBadge = unreadCount > 0 || notificationCount > 0;
+
+  return (
+    <li key={item.href} className="relative">
+      <Link
+        href={item.href}
+        title={t(item.labelKey as any)}
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-lg transition-colors relative",
+          isActive
+            ? "bg-primary/10 text-primary font-semibold"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+      >
+        <item.icon className="h-5 w-5" />
+        
+        {/* Unread/Notification Dot */}
+        {hasBadge && (
+          <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+          </span>
+        )}
+      </Link>
+    </li>
+  );
+}
+
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const { profile, profileLoading, account, accountRole, signOut } = useAuth();
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
+  
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return window.localStorage.getItem("wacrm.sidebar.collapsed") === "true";
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem("wacrm.sidebar.collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   // Only surface the account-name strip when it actually carries
   // information. A solo user's personal account is named after them
   // (the 017 signup trigger seeds it from `full_name`), so showing it
@@ -177,96 +261,219 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         className={cn(
           // Mobile: fixed drawer that slides in from the left.
           "fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-border bg-card",
-          "transition-transform duration-200 ease-out will-change-transform",
+          "transition-all duration-200 ease-out will-change-auto",
           open ? "translate-x-0" : "-translate-x-full",
-          // Desktop: static, always visible — reset all the mobile framing.
-          "lg:static lg:z-0 lg:w-60 lg:translate-x-0 lg:transition-none",
+          // Desktop: static, always visible — supports collapsing.
+          "lg:static lg:z-0 lg:translate-x-0",
+          isCollapsed ? "lg:w-[68px]" : "lg:w-60"
         )}
         aria-label="Primary"
       >
         {/* Logo row. On mobile we put a close button here; on desktop the
             close button is hidden since the sidebar is always-visible. */}
-        <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <MessageSquare className="h-4 w-4" />
-            </div>
-            <span className="text-sm font-semibold text-foreground">
-              {t("title")}
-            </span>
-          </Link>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("closeMenu")}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
-          >
-            <X className="h-5 w-5" />
-          </button>
+        <div className={cn(
+          "flex h-14 shrink-0 items-center border-b border-border px-4",
+          isCollapsed ? "justify-center" : "justify-between gap-2"
+        )}>
+          {isCollapsed ? (
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              title="Expandir menu"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          ) : (
+            <>
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">
+                  {t("title")}
+                </span>
+              </Link>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={toggleCollapse}
+                  title="Recolher menu"
+                  className="hidden lg:flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label={t("closeMenu")}
+                  className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Main navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <ul className="flex flex-col gap-1">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+        {/* Main navigation - Collapsed State (lg only when isCollapsed is true) */}
+        <nav className={cn("flex-1 overflow-y-auto px-3 py-4 hidden", isCollapsed && "lg:block")}>
+          <ul className="flex flex-col items-center gap-2">
+            <SidebarIconLink item={dashboardItem} t={t} pathname={pathname} />
+            <div className="h-[1px] w-8 bg-border my-1" />
+            {crmItems.map((item) => (
+              <SidebarIconLink
+                key={item.href}
+                item={item}
+                t={t}
+                pathname={pathname}
+                unreadCount={item.href === "/inbox" ? totalUnread : undefined}
+                notificationCount={item.href === "/notifications" ? unreadNotifications : undefined}
+              />
+            ))}
+            <div className="h-[1px] w-8 bg-border my-1" />
+            {automationItems.map((item) => (
+              <SidebarIconLink
+                key={item.href}
+                item={item}
+                t={t}
+                pathname={pathname}
+              />
+            ))}
+            <div className="h-[1px] w-8 bg-border my-1" />
+            {bottomNavItems.map((item) => (
+              <SidebarIconLink
+                key={item.href}
+                item={item}
+                t={t}
+                pathname={pathname}
+              />
+            ))}
 
-              const showUnreadDot =
-                item.href === "/inbox" && totalUnread > 0 && !isActive;
-
-              // Unlike the inbox dot, the notifications count stays visible
-              // even while the page is active — it reflects unread state
-              // (cleared by marking notifications read), not "currently
-              // viewing this section".
-              const showNotificationBadge =
-                item.href === "/notifications" && unreadNotifications > 0;
-
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      // Taller on mobile so fingers can hit the row reliably (≥44px).
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className="flex-1">{t(item.labelKey as string)}</span>
-                    {item.beta && (
-                      <span
-                        aria-label={t("beta")}
-                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
-                      >
-                        {t("beta")}
-                      </span>
-                    )}
-                    {showUnreadDot && (
-                      <span
-                        aria-label={t("unreadConversations", { count: totalUnread })}
-                        className="relative flex h-2 w-2"
-                      >
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                      </span>
-                    )}
-                    {showNotificationBadge && (
-                      <span
-                        aria-label={t("unreadNotifications", { count: unreadNotifications })}
-                        className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
-                      >
-                        {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
           </ul>
+        </nav>
+
+        {/* Main navigation - Expanded State (default, hidden on desktop when collapsed) */}
+        <nav className={cn("flex-1 overflow-y-auto px-3 py-4", isCollapsed && "lg:hidden")}>
+          <ul className="flex flex-col gap-1 mb-4">
+            <li key={dashboardItem.href}>
+              <Link
+                href={dashboardItem.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  pathname === dashboardItem.href
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <dashboardItem.icon className="h-4 w-4" />
+                <span className="flex-1">{t(dashboardItem.labelKey as string)}</span>
+              </Link>
+            </li>
+          </ul>
+
+          <Accordion multiple defaultValue={["crm", "automation"]} className="flex flex-col gap-2">
+            <AccordionItem value="crm" className="border-none">
+              <AccordionTrigger className="flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:bg-muted/40 rounded-lg hover:no-underline transition-colors [&_[data-slot=accordion-trigger-icon]]:size-3.5">
+                <span className="flex items-center gap-2 normal-case tracking-normal text-xs font-medium">
+                  <UsersRound className="h-3.5 w-3.5" />
+                  {t("menuCrm")}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-1">
+                <ul className="flex flex-col gap-0.5 pl-2 border-l border-border/60 ml-4 mt-1">
+                  {crmItems.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      (item.href !== "/dashboard" && pathname.startsWith(item.href));
+
+                    const showUnreadDot =
+                      item.href === "/inbox" && totalUnread > 0 && !isActive;
+
+                    const showNotificationBadge =
+                      item.href === "/notifications" && unreadNotifications > 0;
+
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                            isActive
+                              ? "bg-primary/10 text-primary font-semibold"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span className="flex-1">{t(item.labelKey as string)}</span>
+                          {showUnreadDot && (
+                            <span
+                              aria-label={t("unreadConversations", { count: totalUnread })}
+                              className="relative flex h-2 w-2"
+                            >
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                            </span>
+                          )}
+                          {showNotificationBadge && (
+                            <span
+                              aria-label={t("unreadNotifications", { count: unreadNotifications })}
+                              className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+                            >
+                              {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                            </span>
+                          )}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="automation" className="border-none">
+              <AccordionTrigger className="flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:bg-muted/40 rounded-lg hover:no-underline transition-colors [&_[data-slot=accordion-trigger-icon]]:size-3.5">
+                <span className="flex items-center gap-2 normal-case tracking-normal text-xs font-medium">
+                  <Workflow className="h-3.5 w-3.5" />
+                  {t("menuAutomation")}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-1">
+                <ul className="flex flex-col gap-0.5 pl-2 border-l border-border/60 ml-4 mt-1">
+                  {automationItems.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      (item.href !== "/dashboard" && pathname.startsWith(item.href));
+
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                            isActive
+                              ? "bg-primary/10 text-primary font-semibold"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span className="flex-1">{t(item.labelKey as string)}</span>
+                          {item.beta && (
+                            <span
+                              aria-label={t("beta")}
+                              className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
+                            >
+                              {t("beta")}
+                            </span>
+                          )}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           <div className="my-4 border-t border-border" />
 
@@ -278,18 +485,19 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                       isActive
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
-                    {t(item.labelKey as string)}
+                    <span className="flex-1">{t(item.labelKey as string)}</span>
                   </Link>
                 </li>
               );
             })}
+
           </ul>
         </nav>
 
@@ -301,7 +509,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               match, so we hide it to avoid duplicating the user name
               below; for renamed or shared accounts it tells the user
               which account they're acting in. */}
-          {showAccountStrip && account?.name ? (
+          {showAccountStrip && account?.name && !isCollapsed ? (
             <div className="mb-2 flex items-center gap-2 px-3 text-xs text-muted-foreground">
               <UsersRound className="size-3.5 shrink-0" />
               {/* `title=` exposes the full name on hover when it
@@ -331,7 +539,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             </div>
           ) : null}
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/60 focus:bg-muted/60 focus:outline-none data-popup-open:bg-muted/60">
+            <DropdownMenuTrigger className={cn(
+              "flex w-full items-center gap-3 rounded-lg transition-colors hover:bg-muted/60 focus:bg-muted/60 focus:outline-none data-popup-open:bg-muted/60",
+              isCollapsed ? "px-3 py-2 lg:p-1 lg:justify-center" : "px-3 py-2"
+            )}>
               <Avatar className="size-8 shrink-0">
                 {profile?.avatar_url ? (
                   <AvatarImage
@@ -345,7 +556,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     "U"}
                 </AvatarFallback>
               </Avatar>
-              <div className="min-w-0 flex-1">
+              <div className={cn("min-w-0 flex-1 text-left", isCollapsed && "lg:hidden")}>
                 <p className="truncate text-sm font-medium text-foreground">
                   {profile?.full_name ?? t("defaultUser")}
                 </p>
@@ -355,7 +566,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              align="end"
+              align={isCollapsed ? "start" : "end"}
               side="top"
               sideOffset={6}
               className="min-w-56 bg-popover text-popover-foreground ring-border"
