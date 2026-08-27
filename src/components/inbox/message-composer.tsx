@@ -22,6 +22,7 @@ import {
   Plus,
   MessageSquareDashed,
   Zap,
+  Headphones,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GatedButton } from "@/components/ui/gated-button";
@@ -131,6 +132,71 @@ function formatDuration(seconds: number): string {
  *  Meta-accepted format means no server ffmpeg / transcode step. */
 const OPUS_ENCODER_PATH = "/opus/encoderWorker.min.js";
 
+/** Converts any browser-supported audio file to Ogg Opus Mono 48kHz using Web Audio and encoderWorker. */
+async function transcodeToOggOpus(file: File): Promise<Blob> {
+  const AudioContextClass = typeof window !== "undefined" ? (window.AudioContext || (window as any).webkitAudioContext) : null;
+  if (!AudioContextClass) {
+    throw new Error("Web Audio API is not supported in this browser.");
+  }
+  const audioCtx = new AudioContextClass();
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    
+    const worker = new Worker(OPUS_ENCODER_PATH);
+    
+    return new Promise<Blob>((resolve, reject) => {
+      const chunks: Uint8Array[] = [];
+      
+      worker.onmessage = (e: MessageEvent) => {
+        if (e.data.page) {
+          chunks.push(e.data.page);
+        } else if (e.data.message === "done") {
+          const totalLength = chunks.reduce((acc, val) => acc + val.length, 0);
+          const result = new Uint8Array(totalLength);
+          let offset = 0;
+          for (const chunk of chunks) {
+            result.set(chunk, offset);
+            offset += chunk.length;
+          }
+          const blob = new Blob([result], { type: "audio/ogg" });
+          resolve(blob);
+          worker.terminate();
+        }
+      };
+
+      worker.onerror = (err) => {
+        reject(err);
+        worker.terminate();
+      };
+      
+      worker.postMessage({
+        command: "init",
+        originalSampleRate: audioBuffer.sampleRate,
+        encoderSampleRate: 48000,
+        numberOfChannels: 1,
+        encoderApplication: 2048,
+      });
+      
+      const pcm = audioBuffer.getChannelData(0);
+      const bufferLength = 4096;
+      let offset = 0;
+      while (offset < pcm.length) {
+        const chunk = pcm.slice(offset, offset + bufferLength);
+        worker.postMessage({
+          command: "encode",
+          buffers: [chunk],
+        });
+        offset += bufferLength;
+      }
+      
+      worker.postMessage({ command: "done" });
+    });
+  } finally {
+    void audioCtx.close();
+  }
+}
+
 export function MessageComposer({
   conversationId,
   sessionExpired,
@@ -159,9 +225,12 @@ export function MessageComposer({
   // attachment; `busy` covers the upload/transcode window.
   const [draft, setDraft] = useState<MediaDraft | null>(null);
   const [busy, setBusy] = useState(false);
+  const [audioFileForPrompt, setAudioFileForPrompt] = useState<File | null>(null);
+  const [transcoding, setTranscoding] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   // Mirror of `draft` for the unmount cleanup, which can't read render
   // state. Kept in sync below so navigating away with a staged-but-unsent
   // attachment GCs the orphaned object.
@@ -418,6 +487,42 @@ export function MessageComposer({
     [stageUpload],
   );
 
+  const handleAudioPicked = useCallback((file: File | undefined) => {
+    if (!file) return;
+    if (file.size > MEDIA_MAX_BYTES_BY_KIND.audio) {
+      toast.error("Audio file is too large (over 16 MB).");
+      return;
+    }
+    setAudioFileForPrompt(file);
+  }, []);
+
+  const stageAudioAsFile = useCallback(async (file: File) => {
+    setAudioFileForPrompt(null);
+    await stageUpload("audio", file);
+  }, [stageUpload]);
+
+  const stageAudioAsVoiceNote = useCallback(async (file: File) => {
+    setBusy(true);
+    setTranscoding(true);
+    try {
+      const transcodedBlob = await transcodeToOggOpus(file);
+      const transcodedFile = new File(
+        [transcodedBlob],
+        file.name.replace(/\.[^/.]+$/, "") + ".ogg",
+        { type: "audio/ogg" }
+      );
+      await stageUpload("audio", transcodedFile);
+      setAudioFileForPrompt(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to convert audio to voice note.");
+      setAudioFileForPrompt(null);
+    } finally {
+      setTranscoding(false);
+      setBusy(false);
+    }
+  }, [stageUpload]);
+
   // ---- Voice recording (client-side Ogg/Opus, no server transcode) ---
 
   // The encoded Ogg/Opus file from opus-recorder → upload as an audio
@@ -594,6 +699,16 @@ export function MessageComposer({
           e.target.value = "";
         }}
       />
+      <input
+        ref={audioInputRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => {
+          handleAudioPicked(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
 
       {draft ? (
         <MediaDraftPreview
@@ -661,6 +776,10 @@ export function MessageComposer({
               <DropdownMenuItem onClick={() => documentInputRef.current?.click()}>
                 <FileText className="mr-2 h-4 w-4" />
                 {t("document")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
+                <Headphones className="mr-2 h-4 w-4" />
+                {t("audio")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => void startRecording()}>
                 <Mic className="mr-2 h-4 w-4" />
@@ -811,6 +930,51 @@ export function MessageComposer({
         onOpenChange={setQuickReplyOpen}
         onPick={handlePickQuickReply}
       />
+
+      {/* Audio Mode Selection Dialog */}
+      <Dialog
+        open={audioFileForPrompt !== null}
+        onOpenChange={(open) => {
+          if (!open && !transcoding) setAudioFileForPrompt(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          {transcoding ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm font-medium text-foreground">
+                {t("convertingAudio")}
+              </p>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t("audioModePromptTitle")}</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 text-sm text-muted-foreground">
+                {t("audioModePromptDesc")}
+              </div>
+              <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (audioFileForPrompt) void stageAudioAsFile(audioFileForPrompt);
+                  }}
+                >
+                  {t("audioModeFile")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (audioFileForPrompt) void stageAudioAsVoiceNote(audioFileForPrompt);
+                  }}
+                >
+                  {t("audioModeVoice")}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
