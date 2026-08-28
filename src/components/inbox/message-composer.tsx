@@ -81,6 +81,7 @@ export interface SendMediaPayload {
   /** Original file name — surfaced to the recipient for documents. */
   filename?: string;
   replyToId?: string;
+  ptt?: boolean;
 }
 
 interface ReplyDraft {
@@ -108,6 +109,7 @@ interface MediaDraft {
   path: string;
   filename: string;
   caption: string;
+  ptt?: boolean;
 }
 
 interface MessageComposerProps {
@@ -389,7 +391,7 @@ export function MessageComposer({
 
   // Upload a captured file to chat-media and stage it as a draft.
   const stageUpload = useCallback(
-    async (kind: ComposerMediaKind, file: File) => {
+    async (kind: ComposerMediaKind, file: File, ptt?: boolean) => {
       // Per-kind ceiling mirrors Meta's caps (image 5 MB, etc.) so we
       // reject before upload rather than orphaning an object that Meta
       // would then refuse at send.
@@ -407,7 +409,7 @@ export function MessageComposer({
         const { publicUrl, path } = await uploadAccountMedia(CHAT_MEDIA_BUCKET, file);
         // Replacing an existing draft? GC the previous object first.
         removeStaged(draftRef.current?.path);
-        setDraft({ kind, mediaUrl: publicUrl, path, filename: file.name, caption: "" });
+        setDraft({ kind, mediaUrl: publicUrl, path, filename: file.name, caption: "", ptt });
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Upload failed.");
       } finally {
@@ -435,7 +437,7 @@ export function MessageComposer({
 
   const stageAudioAsFile = useCallback(async (file: File) => {
     setAudioFileForPrompt(null);
-    await stageUpload("audio", file);
+    await stageUpload("audio", file, false);
   }, [stageUpload]);
 
   const stageAudioAsVoiceNote = useCallback(async (file: File) => {
@@ -448,7 +450,7 @@ export function MessageComposer({
         file.name.replace(/\.[^/.]+$/, "") + ".ogg",
         { type: "audio/ogg" }
       );
-      await stageUpload("audio", transcodedFile);
+      await stageUpload("audio", transcodedFile, true);
       setAudioFileForPrompt(null);
     } catch (err) {
       console.error(err);
@@ -480,7 +482,7 @@ export function MessageComposer({
       try {
         const { publicUrl, path } = await uploadAccountMedia(CHAT_MEDIA_BUCKET, file);
         removeStaged(draftRef.current?.path);
-        setDraft({ kind: "audio", mediaUrl: publicUrl, path, filename: file.name, caption: "" });
+        setDraft({ kind: "audio", mediaUrl: publicUrl, path, filename: file.name, caption: "", ptt: true });
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Upload failed.");
       } finally {
@@ -559,6 +561,7 @@ export function MessageComposer({
         draft.kind === "audio" ? undefined : draft.caption.trim() || undefined,
       filename: draft.kind === "document" ? draft.filename : undefined,
       replyToId: replyTo?.id,
+      ptt: draft.ptt,
     });
     // The object is now owned by the sent message — clear without GC.
     setDraft(null);

@@ -88,6 +88,7 @@ export interface SendMessageParams {
   /** Structured payload for `messageType === 'interactive'`. */
   interactivePayload?: InteractiveMessagePayload | null;
   replyToMessageId?: string | null;
+  ptt?: boolean;
 }
 
 export interface SendMessageResult {
@@ -201,6 +202,7 @@ export async function sendMessageToConversation(
     templateMessageParams,
     interactivePayload,
     replyToMessageId,
+    ptt,
   } = params;
 
   if (!conversationId) {
@@ -361,6 +363,7 @@ export async function sendMessageToConversation(
         caption: contentText || undefined,
         filename: filename || undefined,
         contextMessageId,
+        ptt,
       });
       return result.messageId;
     }

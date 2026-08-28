@@ -161,6 +161,7 @@ interface SendMediaEngineArgs {
   caption?: string
   /** Document-only; ignored by Meta for image/video. */
   filename?: string
+  ptt?: boolean
 }
 
 /**
@@ -212,6 +213,7 @@ export async function engineSendMedia(
       link: args.link,
       caption: args.caption,
       filename: args.filename,
+      ptt: args.ptt,
     })
     return r.messageId
   }

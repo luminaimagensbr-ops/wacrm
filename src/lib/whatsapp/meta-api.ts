@@ -273,6 +273,8 @@ export interface SendMediaMessageArgs {
   /** Document-only. Shown in the recipient's chat as the file name. Ignored for image/video/audio. */
   filename?: string
   contextMessageId?: string
+  /** Whether to send as a native WhatsApp voice note (PTT). */
+  ptt?: boolean
 }
 
 /**
@@ -290,7 +292,7 @@ export interface SendMediaMessageArgs {
 export async function sendMediaMessage(
   args: SendMediaMessageArgs,
 ): Promise<MetaSendResult> {
-  const { phoneNumberId, accessToken, to, kind, link, caption, filename, contextMessageId } = args
+  const { phoneNumberId, accessToken, to, kind, link, caption, filename, contextMessageId, ptt } = args
   if (!link) throw new Error('sendMediaMessage requires a link.')
   const url = `${META_API_BASE}/${phoneNumberId}/messages`
 
@@ -300,6 +302,7 @@ export async function sendMediaMessage(
   const media: Record<string, unknown> = { link }
   if (caption && kind !== 'audio') media.caption = caption
   if (kind === 'document' && filename) media.filename = filename
+  if (kind === 'audio' && ptt) media.ptt = true
 
   const body: Record<string, unknown> = {
     messaging_product: 'whatsapp',

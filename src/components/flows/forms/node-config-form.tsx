@@ -56,6 +56,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { transcodeToOggOpus } from "@/lib/media/transcode";
+import { Switch } from "@/components/ui/switch";
 import { NextNodeRow, NodeKeySelect, TextRow } from "./fields";
 
 interface NodeConfigFormProps {
@@ -880,6 +881,7 @@ interface SendMediaCfg {
   caption?: string;
   filename?: string;
   next_node_key?: string;
+  ptt?: boolean;
 }
 
 // Mirrors the bucket's allowed_mime_types from migration 016. Kept in
@@ -911,7 +913,6 @@ function SendMediaForm({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [audioFileForPrompt, setAudioFileForPrompt] = useState<File | null>(null);
   const [transcoding, setTranscoding] = useState(false);
   const tInbox = useTranslations("Inbox.composer");
 
@@ -952,7 +953,6 @@ function SendMediaForm({
   );
 
   const stageAudioAsFile = async (file: File) => {
-    setAudioFileForPrompt(null);
     await handleFile(file);
   };
 
@@ -967,11 +967,9 @@ function SendMediaForm({
         { type: "audio/ogg" }
       );
       await handleFile(transcodedFile);
-      setAudioFileForPrompt(null);
     } catch (err) {
       console.error(err);
       toast.error("Failed to convert audio to voice note.");
-      setAudioFileForPrompt(null);
     } finally {
       setTranscoding(false);
       setUploading(false);
@@ -996,6 +994,7 @@ function SendMediaForm({
               media_type: v as NonNullable<SendMediaCfg["media_type"]>,
               media_url: "",
               filename: "",
+              ptt: false,
             });
           }}
         >
@@ -1064,7 +1063,11 @@ function SendMediaForm({
             const f = e.target.files?.[0];
             if (f) {
               if (mediaType === "audio") {
-                setAudioFileForPrompt(f);
+                if (cfg.ptt) {
+                  void stageAudioAsVoiceNote(f);
+                } else {
+                  void stageAudioAsFile(f);
+                }
               } else {
                 void handleFile(f);
               }
@@ -1074,6 +1077,25 @@ function SendMediaForm({
           }}
         />
       </div>
+
+      {mediaType === "audio" && (
+        <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 p-3">
+          <div className="grid gap-0.5">
+            <span className="text-xs font-medium text-foreground">
+              {t("pttLabel")}
+            </span>
+            <span className="text-[10px] text-muted-foreground max-w-[280px]">
+              {t("pttHint")}
+            </span>
+          </div>
+          <Switch
+            checked={cfg.ptt ?? false}
+            onCheckedChange={(checked) => {
+              onUpdateConfig({ ptt: checked });
+            }}
+          />
+        </div>
+      )}
 
       <TextRow
         label={t("captionLabel")}
@@ -1103,51 +1125,6 @@ function SendMediaForm({
         onChange={(v) => onUpdateConfig({ next_node_key: v })}
         label={t("advanceAfterSending")}
       />
-
-      {/* Audio Mode Selection Dialog */}
-      <Dialog
-        open={audioFileForPrompt !== null}
-        onOpenChange={(open) => {
-          if (!open && !transcoding) setAudioFileForPrompt(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          {transcoding ? (
-            <div className="flex flex-col items-center justify-center py-8 gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm font-medium text-foreground">
-                {tInbox("convertingAudio")}
-              </p>
-            </div>
-          ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle>{tInbox("audioModePromptTitle")}</DialogTitle>
-              </DialogHeader>
-              <div className="py-4 text-sm text-muted-foreground">
-                {tInbox("audioModePromptDesc")}
-              </div>
-              <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (audioFileForPrompt) void stageAudioAsFile(audioFileForPrompt);
-                  }}
-                >
-                  {tInbox("audioModeFile")}
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (audioFileForPrompt) void stageAudioAsVoiceNote(audioFileForPrompt);
-                  }}
-                >
-                  {tInbox("audioModeVoice")}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

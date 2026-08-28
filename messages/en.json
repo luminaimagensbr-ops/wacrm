@@ -1155,6 +1155,8 @@
         "videoLabel": "Video (MP4, 3GP)",
         "documentLabel": "Document (PDF, Word, Excel, PowerPoint, TXT)",
         "audioLabel": "Audio (MP3, WAV, OGG/Opus)",
+        "pttLabel": "Send as voice note (recorded live)",
+        "pttHint": "Converts the audio to native WhatsApp format (Ogg Opus) to render with a waveform.",
         "fileLabel": "File",
         "removeFile": "Remove file",
         "uploading": "Uploading…",

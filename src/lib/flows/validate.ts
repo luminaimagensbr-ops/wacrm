@@ -248,6 +248,7 @@ function validateNode(
         media_url?: string;
         caption?: string;
         next_node_key?: string;
+        ptt?: boolean;
       };
       if (
         !cfg.media_type ||

@@ -95,6 +95,8 @@ export interface SendMediaNodeConfig {
   filename?: string;
   /** Auto-advance target after the send lands at Meta. */
   next_node_key: string;
+  /** Whether to send as a native WhatsApp voice note (PTT). */
+  ptt?: boolean;
 }
 
 export interface HandoffNodeConfig {

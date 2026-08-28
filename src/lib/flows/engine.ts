@@ -641,7 +641,7 @@ async function advanceFromNodeKey(
       try {
         const { whatsapp_message_id } = await engineSendMedia({
           accountId: run.account_id,
-    userId: run.user_id,
+          userId: run.user_id,
           conversationId: run.conversation_id!,
           contactId: run.contact_id!,
           kind: cfg.media_type,
@@ -650,6 +650,7 @@ async function advanceFromNodeKey(
             ? interpolateVars(cfg.caption, run.vars)
             : undefined,
           filename: cfg.filename,
+          ptt: cfg.ptt,
         });
         await logEvent(db, run.id, "message_sent", node.node_key, {
           node_type: "send_media",
