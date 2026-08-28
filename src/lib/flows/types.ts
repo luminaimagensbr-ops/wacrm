@@ -82,7 +82,7 @@ export interface SendListNodeConfig {
  * meaningful behavioural difference.
  */
 export interface SendMediaNodeConfig {
-  media_type: "image" | "video" | "document";
+  media_type: "image" | "video" | "document" | "audio";
   /** Public URL Meta will fetch. Uploaded via the builder's file picker. */
   media_url: string;
   /** Optional caption shown under the media (Meta caps at 1024 chars). */

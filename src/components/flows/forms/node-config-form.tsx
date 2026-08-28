@@ -48,6 +48,14 @@ import {
 import { cn } from "@/lib/utils";
 import { uploadAccountMedia, MEDIA_MAX_BYTES } from "@/lib/storage/upload-media";
 import { slugify, type BuilderNode } from "../shared";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { transcodeToOggOpus } from "@/lib/media/transcode";
 import { NextNodeRow, NodeKeySelect, TextRow } from "./fields";
 
 interface NodeConfigFormProps {
@@ -867,7 +875,7 @@ function useUserTags(): UserTag[] {
 // ============================================================
 
 interface SendMediaCfg {
-  media_type?: "image" | "video" | "document";
+  media_type?: "image" | "video" | "document" | "audio";
   media_url?: string;
   caption?: string;
   filename?: string;
@@ -883,6 +891,7 @@ const MEDIA_ACCEPT: Record<NonNullable<SendMediaCfg["media_type"]>, string> = {
   video: "video/mp4,video/3gpp",
   document:
     "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain",
+  audio: "audio/*",
 };
 
 const FLOW_MEDIA_BUCKET = "flow-media";
@@ -902,6 +911,9 @@ function SendMediaForm({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [audioFileForPrompt, setAudioFileForPrompt] = useState<File | null>(null);
+  const [transcoding, setTranscoding] = useState(false);
+  const tInbox = useTranslations("Inbox.composer");
 
   const mediaType = cfg.media_type ?? "image";
   const isDocument = mediaType === "document";
@@ -939,6 +951,33 @@ function SendMediaForm({
     [onUpdateConfig],
   );
 
+  const stageAudioAsFile = async (file: File) => {
+    setAudioFileForPrompt(null);
+    await handleFile(file);
+  };
+
+  const stageAudioAsVoiceNote = async (file: File) => {
+    setUploading(true);
+    setTranscoding(true);
+    try {
+      const transcodedBlob = await transcodeToOggOpus(file);
+      const transcodedFile = new File(
+        [transcodedBlob],
+        file.name.replace(/\.[^/.]+$/, "") + ".ogg",
+        { type: "audio/ogg" }
+      );
+      await handleFile(transcodedFile);
+      setAudioFileForPrompt(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to convert audio to voice note.");
+      setAudioFileForPrompt(null);
+    } finally {
+      setTranscoding(false);
+      setUploading(false);
+    }
+  };
+
   const handleClear = () => {
     onUpdateConfig({ media_url: "", filename: "" });
   };
@@ -966,9 +1005,8 @@ function SendMediaForm({
           <SelectContent>
             <SelectItem value="image">{t("imageLabel")}</SelectItem>
             <SelectItem value="video">{t("videoLabel")}</SelectItem>
-            <SelectItem value="document">
-              {t("documentLabel")}
-            </SelectItem>
+            <SelectItem value="document">{t("documentLabel")}</SelectItem>
+            <SelectItem value="audio">{t("audioLabel")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -1001,13 +1039,13 @@ function SendMediaForm({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading || transcoding}
             className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border bg-card px-3 py-4 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
           >
             {uploading ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                {t("uploading")}
+                {transcoding ? tInbox("convertingAudio") : t("uploading")}
               </>
             ) : (
               <>
@@ -1024,7 +1062,13 @@ function SendMediaForm({
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) void handleFile(f);
+            if (f) {
+              if (mediaType === "audio") {
+                setAudioFileForPrompt(f);
+              } else {
+                void handleFile(f);
+              }
+            }
             // Reset so picking the same file twice still fires onChange.
             e.target.value = "";
           }}
@@ -1059,6 +1103,51 @@ function SendMediaForm({
         onChange={(v) => onUpdateConfig({ next_node_key: v })}
         label={t("advanceAfterSending")}
       />
+
+      {/* Audio Mode Selection Dialog */}
+      <Dialog
+        open={audioFileForPrompt !== null}
+        onOpenChange={(open) => {
+          if (!open && !transcoding) setAudioFileForPrompt(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          {transcoding ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm font-medium text-foreground">
+                {tInbox("convertingAudio")}
+              </p>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>{tInbox("audioModePromptTitle")}</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 text-sm text-muted-foreground">
+                {tInbox("audioModePromptDesc")}
+              </div>
+              <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (audioFileForPrompt) void stageAudioAsFile(audioFileForPrompt);
+                  }}
+                >
+                  {tInbox("audioModeFile")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (audioFileForPrompt) void stageAudioAsVoiceNote(audioFileForPrompt);
+                  }}
+                >
+                  {tInbox("audioModeVoice")}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

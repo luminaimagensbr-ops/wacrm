@@ -1154,6 +1154,7 @@
         "imageLabel": "Image (PNG, JPEG, WebP)",
         "videoLabel": "Video (MP4, 3GP)",
         "documentLabel": "Document (PDF, Word, Excel, PowerPoint, TXT)",
+        "audioLabel": "Audio (MP3, WAV, OGG/Opus)",
         "fileLabel": "File",
         "removeFile": "Remove file",
         "uploading": "Uploading…",
