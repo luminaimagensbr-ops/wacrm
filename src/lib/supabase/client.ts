@@ -9,9 +9,26 @@ let browserClient: SupabaseClient | undefined
 export function createClient() {
   if (browserClient) return browserClient
 
+  const envWindow =
+    typeof window !== 'undefined'
+      ? (
+          window as unknown as {
+            __ENV__?: {
+              NEXT_PUBLIC_SUPABASE_URL?: string
+              NEXT_PUBLIC_SUPABASE_ANON_KEY?: string
+            }
+          }
+        ).__ENV__
+      : undefined
+
+  const supabaseUrl =
+    envWindow?.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseAnonKey =
+    envWindow?.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
   browserClient = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    supabaseUrl,
+    supabaseAnonKey
   )
 
   return browserClient

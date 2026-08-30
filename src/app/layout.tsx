@@ -85,6 +85,14 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
 
+  const envBootScript = `
+(function(){
+  window.__ENV__ = window.__ENV__ || {};
+  window.__ENV__.NEXT_PUBLIC_SUPABASE_URL = ${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL || '')};
+  window.__ENV__.NEXT_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')};
+})();
+`;
+
   return (
     <html
       lang={locale}
@@ -101,6 +109,11 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <Script
+          id="env-boot"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: envBootScript }}
+        />
         <Script
           id="theme-boot"
           strategy="beforeInteractive"
