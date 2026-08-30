@@ -91,6 +91,21 @@ export function phoneVariants(sanitized: string): string[] {
     }
   }
 
+  // 4. Brazilian 9th digit variants (Country code 55 + 2-digit DDD)
+  // In Brazil, Meta wa_id often omits the 9th digit (e.g. 556195979543 = 12 digits),
+  // whereas Meta Cloud API requires/authorizes the 9th digit (5561995979543 = 13 digits).
+  if (sanitized.startsWith('55')) {
+    if (sanitized.length === 12) {
+      const ddd = sanitized.slice(2, 4)
+      const rest = sanitized.slice(4)
+      push(`55${ddd}9${rest}`)
+    } else if (sanitized.length === 13 && sanitized[4] === '9') {
+      const ddd = sanitized.slice(2, 4)
+      const rest = sanitized.slice(5)
+      push(`55${ddd}${rest}`)
+    }
+  }
+
   return [...seen]
 }
 
