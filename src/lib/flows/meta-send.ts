@@ -106,7 +106,7 @@ export async function engineSendText(
       console.log(`[flows/meta-send] Meta send SUCCESS for ${phone}! messageId=${r.messageId}`)
       return r.messageId
     } catch (err) {
-      console.error(`[flows/meta-send] Meta send FAILED for phone=${phone}:`, err instanceof Error ? err.message : err)
+      console.log(`[flows ERROR/meta-send] Meta send FAILED for phone=${phone}:`, err instanceof Error ? err.stack || err.message : err)
       throw err
     }
   }

@@ -284,15 +284,18 @@ async function logEvent(
   node_key: string | null,
   payload: Record<string, unknown> = {},
 ): Promise<void> {
-  const { error } = await db.from("flow_run_events").insert({
-    flow_run_id: flowRunId,
-    event_type,
-    node_key,
-    payload,
-  });
-  if (error) {
-    // Logging failure is non-fatal — surface but don't throw.
-    console.error("[flows] logEvent error:", error.message);
+  try {
+    const { error } = await db.from("flow_run_events").insert({
+      flow_run_id: flowRunId,
+      event_type,
+      node_key,
+      payload,
+    });
+    if (error) {
+      console.log("[flows ERROR] logEvent DB error:", error.message);
+    }
+  } catch (err) {
+    console.log("[flows ERROR] logEvent exception:", err);
   }
 }
 
