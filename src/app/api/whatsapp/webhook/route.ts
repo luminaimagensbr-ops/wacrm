@@ -217,13 +217,11 @@ export async function POST(request: Request) {
   // (see issue #301). `after()` hands the callback to the runtime, which
   // keeps the function alive until it resolves (within the route's
   // maxDuration).
-  after(async () => {
-    try {
-      await processWebhook(body)
-    } catch (error) {
-      console.error('Error processing webhook:', error)
-    }
-  })
+  try {
+    await processWebhook(body)
+  } catch (error) {
+    console.error('Error processing webhook:', error)
+  }
 
   return NextResponse.json({ status: 'received' }, { status: 200 })
 }
@@ -296,6 +294,7 @@ async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
       }
 
       const config = configRows[0]
+      console.log(`[webhook] Processing ${value.messages.length} incoming message(s) for phone_number_id: ${phoneNumberId}, account: ${config.account_id}`)
 
       const decryptedAccessToken = decrypt(config.access_token)
 
