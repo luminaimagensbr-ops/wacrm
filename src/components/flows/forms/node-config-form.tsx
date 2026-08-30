@@ -106,6 +106,50 @@ export function NodeConfigForm({
         </>
       );
 
+    case "wait":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-foreground">
+              Duração da Pausa (Tempo)
+            </label>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                min={1}
+                value={(cfg as { amount?: number }).amount ?? 5}
+                onChange={(e) =>
+                  onUpdateConfig({ amount: Math.max(1, parseInt(e.target.value) || 1) })
+                }
+                className="w-28 text-xs"
+              />
+              <Select
+                value={(cfg as { unit?: string }).unit ?? "seconds"}
+                onValueChange={(v) => onUpdateConfig({ unit: v })}
+              >
+                <SelectTrigger className="w-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="seconds">Segundos</SelectItem>
+                  <SelectItem value="minutes">Minutos</SelectItem>
+                  <SelectItem value="hours">Horas</SelectItem>
+                  <SelectItem value="days">Dias</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <NextNodeRow
+            value={(cfg as { next_node_key?: string }).next_node_key ?? ""}
+            allNodes={allNodes}
+            currentKey={node.node_key}
+            onChange={(v) => onUpdateConfig({ next_node_key: v })}
+            label="Avança para o próximo nó após a pausa"
+          />
+        </div>
+      );
+
     case "send_buttons":
       return (
         <SendButtonsForm

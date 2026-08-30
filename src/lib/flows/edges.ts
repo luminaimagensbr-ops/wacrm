@@ -48,7 +48,8 @@ export function deriveCanvasEdges(nodes: BuilderNode[]): CanvasEdge[] {
       case "send_message":
       case "send_media":
       case "collect_input":
-      case "set_tag": {
+      case "set_tag":
+      case "wait": {
         const next = (cfg as { next_node_key?: string }).next_node_key;
         if (next && knownKeys.has(next)) {
           edges.push({

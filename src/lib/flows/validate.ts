@@ -302,6 +302,50 @@ function validateNode(
       break;
     }
 
+    case "wait": {
+      const cfg = node.config as {
+        amount?: number;
+        unit?: string;
+        next_node_key?: string;
+      };
+      if (typeof cfg.amount !== "number" || cfg.amount <= 0) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "amount",
+          message: "Aguardar node precisa de um tempo válido maior que zero.",
+        });
+      }
+      if (!cfg.unit || !["seconds", "minutes", "hours", "days"].includes(cfg.unit)) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "unit",
+          message: "Aguardar node precisa de uma unidade de tempo válida.",
+        });
+      }
+      if (!cfg.next_node_key) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "next_node_key",
+          message: "Aguardar node precisa apontar para um próximo nó.",
+        });
+      } else if (!knownKeys.has(cfg.next_node_key)) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "next_node_key",
+          message: `Aguardar aponta para nó inexistente "${cfg.next_node_key}".`,
+        });
+      }
+      break;
+    }
+
     case "send_buttons": {
       const cfg = node.config as {
         text?: string;

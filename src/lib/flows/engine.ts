@@ -804,6 +804,55 @@ async function advanceFromNodeKey(
       currentKey = cfg.next_node_key;
       continue;
     }
+    if (node.node_type === "wait") {
+      const cfg = node.config as unknown as WaitNodeConfig;
+      console.log(`[flows] wait starting for node_key="${node.node_key}", amount=${cfg.amount}, unit="${cfg.unit}"`);
+      const unitMs =
+        cfg.unit === "days"
+          ? 86_400_000
+          : cfg.unit === "hours"
+            ? 3_600_000
+            : cfg.unit === "minutes"
+              ? 60_000
+              : 1_000;
+      const delayMs = Math.max(500, (cfg.amount || 1) * unitMs);
+
+      // Short delays (<= 30 seconds) are awaited directly in-memory
+      if (delayMs <= 30_000) {
+        console.log(`[flows] Awaiting in-memory pause of ${delayMs}ms for node "${node.node_key}"`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      } else {
+        // Longer delays schedule execution via automation_pending_executions for cron pickup
+        console.log(`[flows] Scheduling long pause of ${delayMs}ms for node "${node.node_key}"`);
+        const runAt = new Date(Date.now() + delayMs).toISOString();
+        await db.from("automation_pending_executions").insert({
+          automation_id: run.flow_id,
+          account_id: run.account_id,
+          user_id: run.user_id,
+          contact_id: run.contact_id,
+          context: {
+            flow_run_id: run.id,
+            next_node_key: cfg.next_node_key,
+            vars: run.vars,
+          },
+          run_at: runAt,
+          status: "pending",
+        });
+        await db
+          .from("flow_runs")
+          .update({ status: "waiting", current_node_key: node.node_key })
+          .eq("id", run.id);
+        void logEvent(db, run.id, "node_entered", node.node_key, {
+          action: "wait_scheduled",
+          run_at: runAt,
+        });
+        return { outcome: "advanced" };
+      }
+
+      currentKey = cfg.next_node_key;
+      console.log(`[flows] wait node "${node.node_key}" finished, next_node_key => "${currentKey}"`);
+      continue;
+    }
     if (node.node_type === "send_buttons") {
       await sendButtonsAndSuspend(db, run, node);
       // Persist the new current_node_key via optimistic UPDATE.

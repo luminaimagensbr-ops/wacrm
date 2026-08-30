@@ -17,6 +17,7 @@
  */
 
 import {
+  Clock,
   Flag,
   GitFork,
   Inbox,
@@ -152,6 +153,13 @@ export const NODE_META: Record<
     blurb: 'Adds or removes a contact tag',
     category: 'logic',
   },
+  wait: {
+    label: 'Aguardar (Pausa)',
+    icon: Clock,
+    color: 'text-orange-400',
+    blurb: 'Pausa a execução do fluxo por um tempo especificado',
+    category: 'flow',
+  },
   handoff: {
     label: 'Handoff to agent',
     icon: UserPlus,
@@ -205,6 +213,7 @@ const NODE_HUE: Record<NodeType, { l: number; c: number; h: number }> = {
   collect_input: { l: 0.65, c: 0.1, h: 185 }, // teal — capture
   condition: { l: 0.72, c: 0.15, h: 65 }, // amber — a fork in the road
   set_tag: { l: 0.65, c: 0.15, h: 350 }, // pink
+  wait: { l: 0.68, c: 0.18, h: 48 }, // orange / warm amber — wait step
   handoff: { l: 0.65, c: 0.17, h: 16 }, // rose — hands off
   end: { l: 0.55, c: 0.01, h: 260 }, // neutral grey — terminal
 };
@@ -413,12 +422,22 @@ export function summarizeNode(
     case 'set_tag': {
       const mode = cfg.mode === 'remove' ? (t ? t('modeRemove') : 'Remove') : (t ? t('modeAdd') : 'Add');
       const tagId = typeof cfg.tag_id === 'string' ? cfg.tag_id : '';
-      // No tag name available without an async lookup here; show a
-      // short prefix of the UUID so users can disambiguate between
-      // multiple set_tag nodes at a glance.
       return tagId
         ? t ? t('tagPicked', { mode, tag: tagId.slice(0, 8) }) : `${mode} tag ${tagId.slice(0, 8)}…`
         : t ? t('tagNone', { mode }) : `${mode} tag (none picked)`;
+    }
+    case 'wait': {
+      const amount = typeof cfg.amount === 'number' ? cfg.amount : 0;
+      const unit = typeof cfg.unit === 'string' ? cfg.unit : 'seconds';
+      const unitLabel =
+        unit === 'seconds'
+          ? 'segundo(s)'
+          : unit === 'minutes'
+            ? 'minuto(s)'
+            : unit === 'hours'
+              ? 'hora(s)'
+              : 'dia(s)';
+      return amount > 0 ? `Pausa: ${amount} ${unitLabel}` : 'Pausa não configurada';
     }
     case 'handoff': {
       const note = typeof cfg.note === 'string' ? cfg.note : '';
