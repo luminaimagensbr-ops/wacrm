@@ -59,6 +59,8 @@ import { transcodeToOggOpus } from "@/lib/media/transcode";
 import { Switch } from "@/components/ui/switch";
 import { NextNodeRow, NodeKeySelect, TextRow } from "./fields";
 
+import { useFlowEditor } from "../flow-editor-state";
+
 interface NodeConfigFormProps {
   node: BuilderNode;
   allNodes: BuilderNode[];
@@ -77,12 +79,12 @@ export function NodeConfigForm({
   switch (node.node_type) {
     case "start":
       return (
-        <NextNodeRow
-          value={(cfg as { next_node_key?: string }).next_node_key ?? ""}
+        <StartNodeForm
+          cfg={cfg as { next_node_key?: string }}
           allNodes={allNodes}
           currentKey={node.node_key}
-          onChange={(v) => onUpdateConfig({ next_node_key: v })}
-          label={t("advancesTo")}
+          onUpdateConfig={onUpdateConfig}
+          t={t}
         />
       );
 
@@ -1126,5 +1128,124 @@ function SendMediaForm({
         label={t("advanceAfterSending")}
       />
     </>
+  );
+}
+
+// ============================================================
+// start node form
+// ============================================================
+
+function StartNodeForm({
+  cfg,
+  allNodes,
+  currentKey,
+  onUpdateConfig,
+  t,
+}: {
+  cfg: { next_node_key?: string };
+  allNodes: BuilderNode[];
+  currentKey: string;
+  onUpdateConfig: (patch: Record<string, unknown>) => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const { state, setState } = useFlowEditor();
+
+  const [keywordDraft, setKeywordDraft] = useState(() => {
+    const kw = state.trigger_config?.keywords;
+    return Array.isArray(kw) ? kw.join(", ") : "";
+  });
+
+  // Sync draft if state.trigger_config changes externally
+  useEffect(() => {
+    const kw = state.trigger_config?.keywords;
+    setKeywordDraft(Array.isArray(kw) ? kw.join(", ") : "");
+  }, [state.trigger_config?.keywords]);
+
+  const commitKeywords = () => {
+    const parsed = keywordDraft
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    setKeywordDraft(parsed.join(", "));
+    setState((s) => ({
+      ...s,
+      trigger_config: { ...s.trigger_config, keywords: parsed },
+    }));
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="rounded-lg border border-border bg-card/60 p-3.5 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold text-foreground">
+            Gatilho de Entrada (Trigger)
+          </label>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">
+            Quando disparar:
+          </label>
+          <Select
+            value={state.trigger_type}
+            onValueChange={(v) =>
+              setState((s) => ({
+                ...s,
+                trigger_type: v as typeof s.trigger_type,
+                trigger_config:
+                  v === "keyword" ? { keywords: [] } : {},
+              }))
+            }
+          >
+            <SelectTrigger className="bg-muted">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="keyword">
+                Palavra-chave (Keyword)
+              </SelectItem>
+              <SelectItem value="first_inbound_message">
+                Primeira mensagem do contato
+              </SelectItem>
+              <SelectItem value="manual">
+                Disparo Manual
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {state.trigger_type === "keyword" && (
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              Palavras-chave (separadas por vírgula):
+            </label>
+            <Input
+              value={keywordDraft}
+              onChange={(e) => setKeywordDraft(e.target.value)}
+              onBlur={commitKeywords}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitKeywords();
+                }
+              }}
+              placeholder="Ex: oi, menu, ajuda, preco"
+              className="bg-muted"
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Pressione Enter ou clique fora do campo para salvar as palavras.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <NextNodeRow
+        value={cfg.next_node_key ?? ""}
+        allNodes={allNodes}
+        currentKey={currentKey}
+        onChange={(v) => onUpdateConfig({ next_node_key: v })}
+        label={t("advancesTo")}
+      />
+    </div>
   );
 }
