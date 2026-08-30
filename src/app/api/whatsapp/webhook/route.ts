@@ -696,7 +696,7 @@ async function processMessage(
   // ONLY on a genuine first insert — an empty result means this delivery
   // was a replay. This is the single idempotency boundary that must sit
   // BEFORE the unread bump and all downstream fan-out below (issue #367).
-  const { data: insertedRows, error: msgError } = await supabaseAdmin()
+  let { data: insertedRows, error: msgError } = await supabaseAdmin()
     .from('messages')
     .upsert(
       {
@@ -722,6 +722,30 @@ async function processMessage(
       { onConflict: 'conversation_id,message_id', ignoreDuplicates: true }
     )
     .select('id')
+
+  if (msgError && (msgError.code === 'PGRST204' || msgError.message?.includes('media_type'))) {
+    console.warn('[webhook] media_type column missing in DB; retrying message insert without media_type...')
+    const retry = await supabaseAdmin()
+      .from('messages')
+      .upsert(
+        {
+          conversation_id: conversation.id,
+          sender_type: 'customer',
+          content_type: contentType,
+          content_text: contentText,
+          media_url: mediaUrl,
+          message_id: message.id,
+          status: 'delivered',
+          created_at: new Date(parseInt(message.timestamp) * 1000).toISOString(),
+          reply_to_message_id: replyToInternalId,
+          interactive_reply_id: interactiveReplyId,
+        },
+        { onConflict: 'conversation_id,message_id', ignoreDuplicates: true }
+      )
+      .select('id')
+    insertedRows = retry.data
+    msgError = retry.error
+  }
 
   if (msgError) {
     console.error('Error inserting message:', msgError)
