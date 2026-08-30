@@ -662,6 +662,7 @@ async function advanceFromNodeKey(
       }
       currentKey = cfg.next_node_key;
       console.log(`[flows] send_message node "${node.node_key}" finished, next_node_key => "${currentKey}"`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
       continue;
     }
     if (node.node_type === "send_media") {
@@ -698,6 +699,7 @@ async function advanceFromNodeKey(
       }
       currentKey = cfg.next_node_key;
       console.log(`[flows] send_media node "${node.node_key}" finished, next_node_key => "${currentKey}"`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
       continue;
     }
     if (node.node_type === "collect_input") {
