@@ -15,6 +15,7 @@ import {
   handleTemplateWebhookChange,
   isTemplateWebhookField,
 } from '@/lib/whatsapp/template-webhook'
+import { getSupabaseEnv } from '@/lib/supabase/env'
 
 // The `after()` callback in POST runs within this route's max duration.
 // Inbound processing can fan out to per-media Meta verification calls, so
@@ -27,8 +28,9 @@ export const maxDuration = 60
 let _adminClient: any = null
 function supabaseAdmin() {
   if (!_adminClient) {
+    const { url } = getSupabaseEnv()
     _adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      url,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
   }

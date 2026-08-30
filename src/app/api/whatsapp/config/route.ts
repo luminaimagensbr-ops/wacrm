@@ -7,6 +7,7 @@ import {
   verifyPhoneNumber,
 } from '@/lib/whatsapp/meta-api'
 import { encrypt, decrypt } from '@/lib/whatsapp/encryption'
+import { getSupabaseEnv } from '@/lib/supabase/env'
 
 /**
  * Resolve the caller's account_id from their profile. Inlined here
@@ -39,8 +40,9 @@ async function resolveAccountId(
 let _adminClient: any = null
 function supabaseAdmin() {
   if (!_adminClient) {
+    const { url } = getSupabaseEnv()
     _adminClient = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      url,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
   }
