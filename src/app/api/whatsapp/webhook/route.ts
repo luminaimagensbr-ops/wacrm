@@ -747,6 +747,27 @@ async function processMessage(
     msgError = retry.error
   }
 
+  if (msgError && (msgError.code === '42P10' || msgError.message?.includes('ON CONFLICT') || msgError.message?.includes('constraint'))) {
+    console.warn('[webhook] UNIQUE constraint missing on messages table; retrying message insert using plain insert...')
+    const plainInsert = await supabaseAdmin()
+      .from('messages')
+      .insert({
+        conversation_id: conversation.id,
+        sender_type: 'customer',
+        content_type: contentType,
+        content_text: contentText,
+        media_url: mediaUrl,
+        message_id: message.id,
+        status: 'delivered',
+        created_at: new Date(parseInt(message.timestamp) * 1000).toISOString(),
+        reply_to_message_id: replyToInternalId,
+        interactive_reply_id: interactiveReplyId,
+      })
+      .select('id')
+    insertedRows = plainInsert.data
+    msgError = plainInsert.error
+  }
+
   if (msgError) {
     console.error('Error inserting message:', msgError)
     return
