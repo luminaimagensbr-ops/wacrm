@@ -93,14 +93,22 @@ export async function engineSendText(
 
   const accessToken = decrypt(config.access_token)
 
+  console.log(`[flows/meta-send] Sending text via Meta to phone="${sanitized}", text="${args.text}"`)
+
   const attempt = async (phone: string): Promise<string> => {
-    const r = await sendTextMessage({
-      phoneNumberId: config.phone_number_id,
-      accessToken,
-      to: phone,
-      text: args.text,
-    })
-    return r.messageId
+    try {
+      const r = await sendTextMessage({
+        phoneNumberId: config.phone_number_id,
+        accessToken,
+        to: phone,
+        text: args.text,
+      })
+      console.log(`[flows/meta-send] Meta send SUCCESS for ${phone}! messageId=${r.messageId}`)
+      return r.messageId
+    } catch (err) {
+      console.error(`[flows/meta-send] Meta send FAILED for phone=${phone}:`, err instanceof Error ? err.message : err)
+      throw err
+    }
   }
 
   const variants = phoneVariants(sanitized)
