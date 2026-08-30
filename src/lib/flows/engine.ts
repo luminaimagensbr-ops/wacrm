@@ -610,9 +610,11 @@ async function advanceFromNodeKey(
       return { outcome: "completed" };
     }
     console.log(`[flows] Advance loop step ${safety}: node_key="${node.node_key}", type="${node.node_type}"`);
+    console.log(`[flows] About to logEvent for node_key="${node.node_key}"`);
     await logEvent(db, run.id, "node_entered", node.node_key, {
       node_type: node.node_type,
     });
+    console.log(`[flows] Finished logEvent for node_key="${node.node_key}". Checking node_type "${node.node_type}"`);
 
     if (node.node_type === "start") {
       currentKey = (node.config as unknown as StartNodeConfig).next_node_key;
