@@ -254,7 +254,7 @@ export function WhatsAppConfig() {
       };
 
       if (tokenEdited && accessToken !== MASKED_TOKEN && accessToken.trim()) {
-        payload.access_token = accessToken.trim();
+        payload.access_token = accessToken.replace(/[^\x20-\x7E]/g, '').trim();
       } else if (config) {
         // Existing config — reuse stored encrypted token by decrypting on the
         // server. But our POST handler requires an access_token to verify
@@ -635,7 +635,8 @@ export function WhatsAppConfig() {
                   placeholder={t('accessTokenPlaceholder')}
                   value={accessToken}
                   onChange={(e) => {
-                    setAccessToken(e.target.value);
+                    const cleaned = e.target.value.replace(/[^\x20-\x7E]/g, '');
+                    setAccessToken(cleaned);
                     setTokenEdited(true);
                   }}
                   onFocus={() => {
