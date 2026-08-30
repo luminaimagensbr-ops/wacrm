@@ -627,6 +627,7 @@ async function advanceFromNodeKey(
     }
     if (node.node_type === "send_message") {
       const cfg = node.config as unknown as SendMessageNodeConfig;
+      console.log(`[flows] send_message config:`, JSON.stringify(cfg), `run conversationId=${run.conversation_id}, contactId=${run.contact_id}`);
       try {
         const { whatsapp_message_id } = await engineSendText({
           accountId: run.account_id,
