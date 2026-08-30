@@ -641,7 +641,7 @@ async function advanceFromNodeKey(
           whatsapp_message_id,
         });
       } catch (err) {
-        console.error(`[flows] ERROR executing send_message node "${node.node_key}":`, err);
+        console.log(`[flows ERROR] executing send_message node "${node.node_key}":`, err instanceof Error ? err.stack || err.message : err);
         await logEvent(db, run.id, "error", node.node_key, {
           reason: "send_text_failed",
           detail: err instanceof Error ? err.message : String(err),
@@ -674,7 +674,7 @@ async function advanceFromNodeKey(
           whatsapp_message_id,
         });
       } catch (err) {
-        console.error(`[flows] ERROR executing send_media node "${node.node_key}":`, err);
+        console.log(`[flows ERROR] executing send_media node "${node.node_key}":`, err instanceof Error ? err.stack || err.message : err);
         await logEvent(db, run.id, "error", node.node_key, {
           reason: "send_media_failed",
           detail: err instanceof Error ? err.message : String(err),
