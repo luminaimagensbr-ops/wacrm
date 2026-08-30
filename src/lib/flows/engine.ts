@@ -57,6 +57,7 @@ import {
   type SendMessageNodeConfig,
   type SetTagNodeConfig,
   type StartNodeConfig,
+  type WaitNodeConfig,
   type KeywordTriggerConfig,
 } from "./types";
 
