@@ -637,22 +637,23 @@ async function advanceFromNodeKey(
     }
     if (node.node_type === "send_message") {
       const cfg = node.config as unknown as SendMessageNodeConfig;
-      console.log(`[flows] send_message config:`, JSON.stringify(cfg), `run conversationId=${run.conversation_id}, contactId=${run.contact_id}`);
+      console.log(`[flows] send_message starting for node_key="${node.node_key}", config:`, JSON.stringify(cfg));
       try {
         const { whatsapp_message_id } = await engineSendText({
           accountId: run.account_id,
-    userId: run.user_id,
+          userId: run.user_id,
           conversationId: run.conversation_id!,
           contactId: run.contact_id!,
           text: interpolateVars(cfg.text, run.vars),
         });
-        await logEvent(db, run.id, "message_sent", node.node_key, {
+        void logEvent(db, run.id, "message_sent", node.node_key, {
           node_type: "send_message",
           whatsapp_message_id,
         });
+        console.log(`[flows] send_message SUCCESS for node_key="${node.node_key}", msgId=${whatsapp_message_id}`);
       } catch (err) {
         console.log(`[flows ERROR] executing send_message node "${node.node_key}":`, err instanceof Error ? err.stack || err.message : err);
-        await logEvent(db, run.id, "error", node.node_key, {
+        void logEvent(db, run.id, "error", node.node_key, {
           reason: "send_text_failed",
           detail: err instanceof Error ? err.message : String(err),
         });
@@ -660,10 +661,12 @@ async function advanceFromNodeKey(
         return { outcome: "completed" };
       }
       currentKey = cfg.next_node_key;
+      console.log(`[flows] send_message node "${node.node_key}" finished, next_node_key => "${currentKey}"`);
       continue;
     }
     if (node.node_type === "send_media") {
       const cfg = node.config as unknown as SendMediaNodeConfig;
+      console.log(`[flows] send_media starting for node_key="${node.node_key}", config:`, JSON.stringify(cfg));
       try {
         const { whatsapp_message_id } = await engineSendMedia({
           accountId: run.account_id,
@@ -678,14 +681,15 @@ async function advanceFromNodeKey(
           filename: cfg.filename,
           ptt: cfg.ptt,
         });
-        await logEvent(db, run.id, "message_sent", node.node_key, {
+        void logEvent(db, run.id, "message_sent", node.node_key, {
           node_type: "send_media",
           media_type: cfg.media_type,
           whatsapp_message_id,
         });
+        console.log(`[flows] send_media SUCCESS for node_key="${node.node_key}", msgId=${whatsapp_message_id}`);
       } catch (err) {
         console.log(`[flows ERROR] executing send_media node "${node.node_key}":`, err instanceof Error ? err.stack || err.message : err);
-        await logEvent(db, run.id, "error", node.node_key, {
+        void logEvent(db, run.id, "error", node.node_key, {
           reason: "send_media_failed",
           detail: err instanceof Error ? err.message : String(err),
         });
@@ -693,6 +697,7 @@ async function advanceFromNodeKey(
         return { outcome: "completed" };
       }
       currentKey = cfg.next_node_key;
+      console.log(`[flows] send_media node "${node.node_key}" finished, next_node_key => "${currentKey}"`);
       continue;
     }
     if (node.node_type === "collect_input") {
