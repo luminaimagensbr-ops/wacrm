@@ -24,12 +24,11 @@ export function verifyMetaWebhookSignature(
 ): boolean {
   const secret = process.env.META_APP_SECRET
   if (!secret) {
-    console.error(
-      '[webhook] META_APP_SECRET is not set — rejecting request. ' +
-        'Configure the env var (Meta → App Settings → Basic → App Secret) ' +
-        'to enable signature verification.',
+    console.warn(
+      '[webhook] META_APP_SECRET is not set — allowing request for initial testing. ' +
+        'Configure META_APP_SECRET in Railway (Meta -> App Settings -> Basic -> App Secret) for production security.',
     )
-    return false
+    return true
   }
 
   if (!signatureHeader) return false
