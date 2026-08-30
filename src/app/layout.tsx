@@ -6,6 +6,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ThemedToaster } from "@/components/themed-toaster";
+import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
   DEFAULT_MODE,
   DEFAULT_THEME,
@@ -84,12 +85,13 @@ export default async function RootLayout({
 }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const { url, anonKey } = getSupabaseEnv();
 
   const envBootScript = `
 (function(){
   window.__ENV__ = window.__ENV__ || {};
-  window.__ENV__.NEXT_PUBLIC_SUPABASE_URL = ${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL || '')};
-  window.__ENV__.NEXT_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')};
+  window.__ENV__.NEXT_PUBLIC_SUPABASE_URL = ${JSON.stringify(url)};
+  window.__ENV__.NEXT_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(anonKey)};
 })();
 `;
 
