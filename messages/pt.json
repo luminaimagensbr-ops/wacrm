@@ -1206,6 +1206,10 @@
           "label": "Marcar contato",
           "blurb": "Adiciona ou remove uma tag do contato"
         },
+        "wait": {
+          "label": "Aguardar (Pausa)",
+          "blurb": "Pausa a execução por um tempo determinado"
+        },
         "handoff": {
           "label": "Transferir para humano",
           "blurb": "Transfere a conversa para o suporte humano"
