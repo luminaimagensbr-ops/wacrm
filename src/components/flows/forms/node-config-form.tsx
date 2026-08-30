@@ -95,6 +95,7 @@ export function NodeConfigForm({
             label={t("textToCustomer")}
             value={(cfg as { text?: string }).text ?? ""}
             onChange={(v) => onUpdateConfig({ text: v })}
+            rows={3}
           />
           <NextNodeRow
             value={(cfg as { next_node_key?: string }).next_node_key ?? ""}
@@ -192,7 +193,7 @@ export function NodeConfigForm({
             label={t("promptToCustomer")}
             value={(cfg as { prompt_text?: string }).prompt_text ?? ""}
             onChange={(v) => onUpdateConfig({ prompt_text: v })}
-            rows={2}
+            rows={3}
           />
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
@@ -1147,7 +1148,7 @@ function SendMediaForm({
         label={t("captionLabel")}
         value={cfg.caption ?? ""}
         onChange={(v) => onUpdateConfig({ caption: v })}
-        rows={2}
+        rows={3}
       />
 
       {isDocument && (

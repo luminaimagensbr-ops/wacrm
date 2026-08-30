@@ -35,7 +35,7 @@ export function TextRow({
   label,
   value,
   onChange,
-  rows = 1,
+  rows = 3,
 }: {
   label: string;
   value: string;
@@ -50,13 +50,13 @@ export function TextRow({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={rows}
-          className="bg-muted"
+          className="bg-muted min-h-[80px] resize-y text-xs"
         />
       ) : (
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="bg-muted"
+          className="bg-muted text-xs"
         />
       )}
     </div>
