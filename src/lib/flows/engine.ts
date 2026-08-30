@@ -593,51 +593,50 @@ async function advanceFromNodeKey(
   nodes: Map<string, FlowNodeRow>,
 ): Promise<{ outcome: "advanced" | "completed" | "handed_off" }> {
   let currentKey: string | null = startNodeKey;
-  // Defensive cap — if a flow has a cycle (which the validator
-  // SHOULD catch but doesn't yet in v1), we bail rather than loop.
+  const visitedNodeKeys = new Set<string>();
+
   for (let safety = 0; safety < 64; safety += 1) {
-    if (!currentKey) {
-      console.warn(`[flows] Stopped advance loop: next_node_key is null/undefined at step ${safety}`);
-      await logEvent(db, run.id, "error", null, {
-        reason: "next_node_key was null mid-advance",
-      });
-      await endRun(db, run.id, "failed", "missing_next_node");
-      return { outcome: "completed" };
+    if (currentKey) {
+      visitedNodeKeys.add(currentKey);
     }
-    const node: FlowNodeRow | null = nodes.get(currentKey) ?? null;
-    if (!node) {
-      console.warn(`[flows] Node "${currentKey}" not found in flow nodes map!`);
-      await logEvent(db, run.id, "error", currentKey, {
-        reason: "node_not_found",
-      });
-      await endRun(db, run.id, "failed", "node_not_found");
-      return { outcome: "completed" };
+    if (!currentKey || !nodes.has(currentKey)) {
+      // Find the first unvisited non-start node as fallback
+      const fallbackNode = Array.from(nodes.values()).find(
+        (n) => n.node_type !== "start" && !visitedNodeKeys.has(n.node_key)
+      );
+      if (fallbackNode) {
+        console.log(
+          `[flows] next_node_key "${currentKey}" not found or empty at step ${safety}. Fallback advancing to unvisited node "${fallbackNode.node_key}" (${fallbackNode.node_type})`
+        );
+        currentKey = fallbackNode.node_key;
+        visitedNodeKeys.add(currentKey);
+      } else {
+        console.warn(
+          `[flows] Stopped advance loop: next_node_key "${currentKey}" is empty or invalid at step ${safety}, and no unvisited nodes remain.`
+        );
+        await logEvent(db, run.id, "error", null, {
+          reason: "missing_next_node_and_no_fallback",
+        });
+        await endRun(db, run.id, "completed", "end_of_flow");
+        return { outcome: "completed" };
+      }
     }
-    console.log(`[flows] Advance loop step ${safety}: node_key="${node.node_key}", type="${node.node_type}"`);
-    // Fire-and-forget logging to ensure DB latency on events never halts node advancement!
+    const node: FlowNodeRow = nodes.get(currentKey)!;
+    console.log(
+      `[flows] Advance loop step ${safety}: node_key="${node.node_key}", type="${node.node_type}", config=${JSON.stringify(node.config)}`
+    );
     void logEvent(db, run.id, "node_entered", node.node_key, {
       node_type: node.node_type,
     });
-    console.log(`[flows] Processing node_type "${node.node_type}" for node_key="${node.node_key}"`);
 
     if (node.node_type === "start") {
       currentKey = (node.config as unknown as StartNodeConfig).next_node_key;
       console.log(`[flows] Start node config.next_node_key => "${currentKey}"`);
-      if (!currentKey) {
-        const startKey = node.node_key;
-        const fallbackNode = Array.from(nodes.values()).find((n) => n.node_key !== startKey);
-        if (fallbackNode) {
-          console.log(`[flows] Start node had empty next_node_key; auto-advancing to fallback node "${fallbackNode.node_key}"`);
-          currentKey = fallbackNode.node_key;
-        } else {
-          console.warn(`[flows] Start node "${startKey}" has no next_node_key and no other node exists!`);
-        }
-      }
       continue;
     }
     if (node.node_type === "send_message") {
       const cfg = node.config as unknown as SendMessageNodeConfig;
-      console.log(`[flows] send_message starting for node_key="${node.node_key}", config:`, JSON.stringify(cfg));
+      console.log(`[flows] send_message starting for node_key="${node.node_key}", text="${cfg.text}"`);
       try {
         const { whatsapp_message_id } = await engineSendText({
           accountId: run.account_id,
@@ -667,7 +666,7 @@ async function advanceFromNodeKey(
     }
     if (node.node_type === "send_media") {
       const cfg = node.config as unknown as SendMediaNodeConfig;
-      console.log(`[flows] send_media starting for node_key="${node.node_key}", config:`, JSON.stringify(cfg));
+      console.log(`[flows] send_media starting for node_key="${node.node_key}", media_url="${cfg.media_url}"`);
       try {
         const { whatsapp_message_id } = await engineSendMedia({
           accountId: run.account_id,
