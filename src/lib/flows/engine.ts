@@ -285,14 +285,18 @@ async function logEvent(
   payload: Record<string, unknown> = {},
 ): Promise<void> {
   try {
-    const { error } = await db.from("flow_run_events").insert({
+    const insertPromise = db.from("flow_run_events").insert({
       flow_run_id: flowRunId,
       event_type,
       node_key,
       payload,
     });
-    if (error) {
-      console.log("[flows ERROR] logEvent DB error:", error.message);
+    const timeoutPromise = new Promise<{ error: { message: string } }>((resolve) =>
+      setTimeout(() => resolve({ error: { message: "logEvent insertion timed out after 1000ms" } }), 1000)
+    );
+    const result = (await Promise.race([insertPromise, timeoutPromise])) as { error?: { message: string } } | null;
+    if (result?.error) {
+      console.log("[flows ERROR] logEvent DB error/timeout:", result.error.message);
     }
   } catch (err) {
     console.log("[flows ERROR] logEvent exception:", err);
@@ -610,11 +614,11 @@ async function advanceFromNodeKey(
       return { outcome: "completed" };
     }
     console.log(`[flows] Advance loop step ${safety}: node_key="${node.node_key}", type="${node.node_type}"`);
-    console.log(`[flows] About to logEvent for node_key="${node.node_key}"`);
-    await logEvent(db, run.id, "node_entered", node.node_key, {
+    // Fire-and-forget logging to ensure DB latency on events never halts node advancement!
+    void logEvent(db, run.id, "node_entered", node.node_key, {
       node_type: node.node_type,
     });
-    console.log(`[flows] Finished logEvent for node_key="${node.node_key}". Checking node_type "${node.node_type}"`);
+    console.log(`[flows] Processing node_type "${node.node_type}" for node_key="${node.node_key}"`);
 
     if (node.node_type === "start") {
       currentKey = (node.config as unknown as StartNodeConfig).next_node_key;
