@@ -294,7 +294,7 @@ async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
       }
 
       const config = configRows[0]
-      console.log(`[webhook] Processing ${value.messages.length} incoming message(s) for phone_number_id: ${phoneNumberId}, account: ${config.account_id}`)
+      console.log(`[webhook BUILD_v1038] Processing ${value.messages.length} incoming message(s) for phone_number_id: ${phoneNumberId}, account: ${config.account_id}`)
 
       const decryptedAccessToken = decrypt(config.access_token)
 
