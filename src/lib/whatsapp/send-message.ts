@@ -471,7 +471,7 @@ export async function sendMessageToConversation(
           )
         : (contentText ?? null);
 
-  const { data: messageRecord, error: msgError } = await db
+  let { data: messageRecord, error: msgError } = await db
     .from('messages')
     .insert({
       conversation_id: conversationId,
@@ -488,6 +488,27 @@ export async function sendMessageToConversation(
     })
     .select()
     .single();
+
+  if (msgError && (msgError.code === 'PGRST204' || msgError.message?.includes('interactive_payload'))) {
+    console.warn('[send-message] interactive_payload column missing in DB; retrying insert without interactive_payload...');
+    const retry = await db
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_type: 'agent',
+        content_type: messageType,
+        content_text: persistedText,
+        media_url: mediaUrl || null,
+        template_name: templateName || null,
+        message_id: waMessageId,
+        status: 'sent',
+        reply_to_message_id: replyToMessageId || null,
+      })
+      .select()
+      .single();
+    messageRecord = retry.data;
+    msgError = retry.error;
+  }
 
   if (msgError) {
     console.error('[send-message] error inserting sent message:', msgError);
