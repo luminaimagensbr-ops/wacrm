@@ -130,31 +130,36 @@ export async function engineSendText(
   if (lastError) throw lastError
 
   if (workingPhone !== sanitized) {
-    await db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id)
+    void db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id)
   }
 
-  const { error: msgErr } = await db.from('messages').insert({
-    conversation_id: args.conversationId,
-    sender_type: 'bot',
-    content_type: 'text',
-    content_text: args.text,
-    message_id: waMessageId,
-    status: 'sent',
-    ai_generated: args.aiGenerated ?? false,
-  })
-  if (msgErr) {
-    console.error('[flows/meta-send] DB insert error after sending text to Meta:', msgErr.message)
-    // Non-fatal if sent to WhatsApp successfully
-  }
+  void (async () => {
+    try {
+      const { error: msgErr } = await db.from('messages').insert({
+        conversation_id: args.conversationId,
+        sender_type: 'bot',
+        content_type: 'text',
+        content_text: args.text,
+        message_id: waMessageId,
+        status: 'sent',
+        ai_generated: args.aiGenerated ?? false,
+      })
+      if (msgErr) {
+        console.error('[flows/meta-send] DB insert error after sending text to Meta:', msgErr.message)
+      }
 
-  await db
-    .from('conversations')
-    .update({
-      last_message_text: args.text,
-      last_message_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', args.conversationId)
+      await db
+        .from('conversations')
+        .update({
+          last_message_text: args.text,
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', args.conversationId)
+    } catch (err) {
+      console.error('[flows/meta-send] Non-blocking DB tracking error:', err)
+    }
+  })()
 
   return { whatsapp_message_id: waMessageId }
 }
@@ -246,35 +251,36 @@ export async function engineSendMedia(
   if (lastError) throw lastError
 
   if (workingPhone !== sanitized) {
-    await db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id)
+    void db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id)
   }
 
-  // content_type='image'|'video'|'document' — these are already in the
-  // messages_content_type_check constraint (migration 001 + 010).
-  // content_text carries the caption (or empty) so the conversation
-  // list preview shows something meaningful when the user glances at it.
   const preview = args.caption?.trim() || `[${args.kind}]`
-  const { error: msgErr } = await db.from('messages').insert({
-    conversation_id: args.conversationId,
-    sender_type: 'bot',
-    content_type: args.kind,
-    content_text: args.caption ?? null,
-    message_id: waMessageId,
-    status: 'sent',
-  })
-  if (msgErr) {
-    console.error('[flows/meta-send] DB insert error after sending media to Meta:', msgErr.message)
-    // Non-fatal if sent to WhatsApp successfully
-  }
+  void (async () => {
+    try {
+      const { error: msgErr } = await db.from('messages').insert({
+        conversation_id: args.conversationId,
+        sender_type: 'bot',
+        content_type: args.kind,
+        content_text: args.caption ?? null,
+        message_id: waMessageId,
+        status: 'sent',
+      })
+      if (msgErr) {
+        console.error('[flows/meta-send] DB insert error after sending media to Meta:', msgErr.message)
+      }
 
-  await db
-    .from('conversations')
-    .update({
-      last_message_text: preview,
-      last_message_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', args.conversationId)
+      await db
+        .from('conversations')
+        .update({
+          last_message_text: preview,
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', args.conversationId)
+    } catch (err) {
+      console.error('[flows/meta-send] Non-blocking DB media tracking error:', err)
+    }
+  })()
 
   return { whatsapp_message_id: waMessageId }
 }
