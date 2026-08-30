@@ -357,26 +357,27 @@ async function findEntryFlow(
     .eq("account_id", accountId)
     .eq("status", "active")
     .order("created_at", { ascending: true });
-  if (error || !flows) return null;
+  if (error || !flows) {
+    console.log(`[flows] findEntryFlow: active flows query error or empty:`, error?.message);
+    return null;
+  }
 
   const typed = flows as FlowRow[];
+  console.log(`[flows] findEntryFlow checking ${typed.length} active flow(s) for candidates:`, candidates);
   for (const flow of typed) {
+    console.log(`[flows] Flow "${flow.name}" (${flow.id}) trigger_type="${flow.trigger_type}", config:`, JSON.stringify(flow.trigger_config));
     if (flow.trigger_type === "keyword") {
       const cfg = flow.trigger_config as KeywordTriggerConfig;
       if (candidates.some((text) => matchesKeywordTrigger(text, cfg))) {
+        console.log(`[flows] Matched flow "${flow.name}"! Entry node: ${flow.entry_node_id}`);
         return flow;
       }
     } else if (flow.trigger_type === "first_inbound_message" && isFirstInbound) {
-      // Also reachable by a tap now: a broadcast template with a
-      // quick-reply button can genuinely be what prompts a contact's
-      // first-ever inbound. The automations dispatcher has always
-      // treated a tap that way (the webhook pushes
-      // `first_inbound_message` regardless of envelope) — flows were
-      // the inconsistent half.
+      console.log(`[flows] Matched first_inbound_message flow "${flow.name}"!`);
       return flow;
     }
-    // 'manual' triggers do not auto-start from inbound messages.
   }
+  console.log(`[flows] No active flow matched the candidates:`, candidates);
   return null;
 }
 
@@ -880,6 +881,7 @@ export async function dispatchInboundToFlows(
     // contact. For new runs, the partial unique index catches duplicate
     // starts at INSERT time.
     if (activeRun) {
+      console.log(`[flows] Contact ${input.contactId} HAS an active flow run ${activeRun.id} (flow: ${activeRun.flow_id}, current_node: ${activeRun.current_node_key}). Message will advance/reprompt active run.`);
       const dupe = await isDuplicateInbound(
         db,
         input.accountId,
