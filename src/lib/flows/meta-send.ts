@@ -135,15 +135,23 @@ export async function engineSendText(
 
   void (async () => {
     try {
-      const { error: msgErr } = await db.from('messages').insert({
+      const payload: Record<string, unknown> = {
         conversation_id: args.conversationId,
         sender_type: 'bot',
         content_type: 'text',
         content_text: args.text,
         message_id: waMessageId,
         status: 'sent',
-        ai_generated: args.aiGenerated ?? false,
-      })
+      }
+      if (args.aiGenerated) {
+        payload.ai_generated = true
+      }
+      let { error: msgErr } = await db.from('messages').insert(payload)
+      if (msgErr && msgErr.message?.includes('ai_generated')) {
+        delete payload.ai_generated
+        const retry = await db.from('messages').insert(payload)
+        msgErr = retry.error
+      }
       if (msgErr) {
         console.error('[flows/meta-send] DB insert error after sending text to Meta:', msgErr.message)
       }
