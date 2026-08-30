@@ -135,7 +135,8 @@ export async function engineSendText(
     ai_generated: args.aiGenerated ?? false,
   })
   if (msgErr) {
-    throw new Error(`sent to Meta but DB insert failed: ${msgErr.message}`)
+    console.error('[flows/meta-send] DB insert error after sending text to Meta:', msgErr.message)
+    // Non-fatal if sent to WhatsApp successfully
   }
 
   await db
@@ -254,7 +255,8 @@ export async function engineSendMedia(
     status: 'sent',
   })
   if (msgErr) {
-    throw new Error(`sent to Meta but DB insert failed: ${msgErr.message}`)
+    console.error('[flows/meta-send] DB insert error after sending media to Meta:', msgErr.message)
+    // Non-fatal if sent to WhatsApp successfully
   }
 
   await db
