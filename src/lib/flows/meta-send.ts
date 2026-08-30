@@ -437,7 +437,7 @@ async function sendInteractiveViaMeta(
           sections: input.sections,
         }
 
-  const { error: msgErr } = await db.from('messages').insert({
+  let { error: msgErr } = await db.from('messages').insert({
     conversation_id: input.conversationId,
     sender_type: 'bot',
     content_type: 'interactive',
@@ -446,8 +446,23 @@ async function sendInteractiveViaMeta(
     message_id: waMessageId,
     status: 'sent',
   })
+
+  if (msgErr && (msgErr.message?.includes('interactive_payload') || msgErr.code === 'PGRST204')) {
+    console.warn('[flows/meta-send] interactive_payload missing in DB; retrying insert without it...')
+    const { error: retryErr } = await db.from('messages').insert({
+      conversation_id: input.conversationId,
+      sender_type: 'bot',
+      content_type: 'interactive',
+      content_text: input.bodyText,
+      message_id: waMessageId,
+      status: 'sent',
+    })
+    msgErr = retryErr
+  }
+
   if (msgErr) {
-    throw new Error(`sent to Meta but DB insert failed: ${msgErr.message}`)
+    console.error('[flows/meta-send] DB insert error after sending to Meta:', msgErr.message)
+    // Non-fatal if sent to WhatsApp successfully
   }
 
   await db

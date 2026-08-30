@@ -590,6 +590,7 @@ async function advanceFromNodeKey(
   // SHOULD catch but doesn't yet in v1), we bail rather than loop.
   for (let safety = 0; safety < 64; safety += 1) {
     if (!currentKey) {
+      console.warn(`[flows] Stopped advance loop: next_node_key is null/undefined at step ${safety}`);
       await logEvent(db, run.id, "error", null, {
         reason: "next_node_key was null mid-advance",
       });
@@ -598,18 +599,24 @@ async function advanceFromNodeKey(
     }
     const node: FlowNodeRow | null = nodes.get(currentKey) ?? null;
     if (!node) {
+      console.warn(`[flows] Node "${currentKey}" not found in flow nodes map!`);
       await logEvent(db, run.id, "error", currentKey, {
         reason: "node_not_found",
       });
       await endRun(db, run.id, "failed", "node_not_found");
       return { outcome: "completed" };
     }
+    console.log(`[flows] Advance loop step ${safety}: node_key="${node.node_key}", type="${node.node_type}"`);
     await logEvent(db, run.id, "node_entered", node.node_key, {
       node_type: node.node_type,
     });
 
     if (node.node_type === "start") {
       currentKey = (node.config as unknown as StartNodeConfig).next_node_key;
+      console.log(`[flows] Start node config.next_node_key => "${currentKey}"`);
+      if (!currentKey) {
+        console.warn(`[flows] Start node "${node.node_key}" has no next_node_key! (Advances to is empty)`);
+      }
       continue;
     }
     if (node.node_type === "send_message") {
