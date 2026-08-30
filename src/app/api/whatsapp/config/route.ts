@@ -187,7 +187,16 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { phone_number_id, waba_id, access_token, verify_token, pin } = body
+    const raw_access_token = typeof body.access_token === 'string' ? body.access_token : ''
+    const raw_phone_id = typeof body.phone_number_id === 'string' ? body.phone_number_id : ''
+    const raw_waba_id = typeof body.waba_id === 'string' ? body.waba_id : ''
+    const verify_token = typeof body.verify_token === 'string' ? body.verify_token.trim() : ''
+    const pin = body.pin
+
+    // Strip non-ASCII characters (like ▲ character 9650) and whitespace
+    const access_token = raw_access_token.replace(/[^\x20-\x7E]/g, '').trim()
+    const phone_number_id = raw_phone_id.replace(/[^\x20-\x7E]/g, '').trim()
+    const waba_id = raw_waba_id.replace(/[^\x20-\x7E]/g, '').trim()
 
     if (!access_token || !phone_number_id) {
       return NextResponse.json(

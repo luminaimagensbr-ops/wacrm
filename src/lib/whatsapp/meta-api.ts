@@ -54,7 +54,8 @@ export interface VerifyPhoneNumberArgs {
 export async function verifyPhoneNumber(
   args: VerifyPhoneNumberArgs
 ): Promise<MetaPhoneInfo> {
-  const { phoneNumberId, accessToken } = args
+  const phoneNumberId = (args.phoneNumberId || '').replace(/[^\x20-\x7E]/g, '').trim()
+  const accessToken = (args.accessToken || '').replace(/[^\x20-\x7E]/g, '').trim()
   const url = `${META_API_BASE}/${phoneNumberId}?fields=id,display_phone_number,verified_name,quality_rating`
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
