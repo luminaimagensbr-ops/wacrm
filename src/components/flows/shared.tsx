@@ -50,6 +50,7 @@ export type NodeType =
   | 'collect_input'
   | 'condition'
   | 'set_tag'
+  | 'wait'
   | 'handoff'
   | 'end';
 
