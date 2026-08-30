@@ -624,12 +624,13 @@ async function advanceFromNodeKey(
       currentKey = (node.config as unknown as StartNodeConfig).next_node_key;
       console.log(`[flows] Start node config.next_node_key => "${currentKey}"`);
       if (!currentKey) {
-        const fallbackNode = Array.from(nodes.values()).find((n) => n.node_key !== node.node_key);
+        const startKey = node.node_key;
+        const fallbackNode = Array.from(nodes.values()).find((n) => n.node_key !== startKey);
         if (fallbackNode) {
           console.log(`[flows] Start node had empty next_node_key; auto-advancing to fallback node "${fallbackNode.node_key}"`);
           currentKey = fallbackNode.node_key;
         } else {
-          console.warn(`[flows] Start node "${node.node_key}" has no next_node_key and no other node exists!`);
+          console.warn(`[flows] Start node "${startKey}" has no next_node_key and no other node exists!`);
         }
       }
       continue;
