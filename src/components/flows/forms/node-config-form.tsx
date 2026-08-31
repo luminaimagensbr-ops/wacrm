@@ -57,7 +57,7 @@ import {
 } from "@/components/ui/dialog";
 import { transcodeToOggOpus } from "@/lib/media/transcode";
 import { Switch } from "@/components/ui/switch";
-import { NextNodeRow, NodeKeySelect, TextRow } from "./fields";
+import { NextNodeRow, NodeKeySelect, TextRow, TypingSimulationFields } from "./fields";
 
 import { useFlowEditor } from "../flow-editor-state";
 
@@ -96,6 +96,10 @@ export function NodeConfigForm({
             value={(cfg as { text?: string }).text ?? ""}
             onChange={(v) => onUpdateConfig({ text: v })}
             rows={3}
+          />
+          <TypingSimulationFields
+            cfg={cfg as { simulate_typing?: boolean; typing_seconds?: number }}
+            onUpdateConfig={onUpdateConfig}
           />
           <NextNodeRow
             value={(cfg as { next_node_key?: string }).next_node_key ?? ""}
@@ -194,6 +198,10 @@ export function NodeConfigForm({
             value={(cfg as { prompt_text?: string }).prompt_text ?? ""}
             onChange={(v) => onUpdateConfig({ prompt_text: v })}
             rows={3}
+          />
+          <TypingSimulationFields
+            cfg={cfg as { simulate_typing?: boolean; typing_seconds?: number }}
+            onUpdateConfig={onUpdateConfig}
           />
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
@@ -330,6 +338,10 @@ function SendButtonsForm({
         label={t("footerText")}
         value={cfg.footer_text ?? ""}
         onChange={(v) => onUpdateConfig({ footer_text: v })}
+      />
+      <TypingSimulationFields
+        cfg={cfg}
+        onUpdateConfig={onUpdateConfig}
       />
       <div>
         <div className="mb-2 flex items-center justify-between">
@@ -529,6 +541,11 @@ function SendListForm({
           onChange={(v) => onUpdateConfig({ footer_text: v })}
         />
       </div>
+
+      <TypingSimulationFields
+        cfg={cfg}
+        onUpdateConfig={onUpdateConfig}
+      />
 
       <div className="mt-2">
         <label className="mb-2 block text-xs text-muted-foreground">
@@ -1149,6 +1166,12 @@ function SendMediaForm({
         value={cfg.caption ?? ""}
         onChange={(v) => onUpdateConfig({ caption: v })}
         rows={3}
+      />
+
+      <TypingSimulationFields
+        cfg={cfg}
+        onUpdateConfig={onUpdateConfig}
+        isAudio={mediaType === "audio"}
       />
 
       {isDocument && (

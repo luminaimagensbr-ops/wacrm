@@ -20,6 +20,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -132,5 +133,67 @@ export function NodeKeySelect({
         })}
       </SelectContent>
     </Select>
+  );
+}
+
+export function TypingSimulationFields({
+  cfg,
+  onUpdateConfig,
+  isAudio = false,
+}: {
+  cfg: { simulate_typing?: boolean; typing_seconds?: number };
+  onUpdateConfig: (patch: Record<string, unknown>) => void;
+  isAudio?: boolean;
+}) {
+  const enabled = cfg.simulate_typing ?? false;
+  const seconds = cfg.typing_seconds ?? 3;
+
+  return (
+    <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="grid gap-0.5">
+          <span className="text-xs font-medium text-foreground">
+            {isAudio ? "Simular gravando áudio" : "Simular digitação"}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            {isAudio
+              ? "Exibe 'gravando áudio...' no WhatsApp antes de enviar"
+              : "Exibe 'digitando...' no WhatsApp antes de enviar"}
+          </span>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={(checked) => {
+            onUpdateConfig({
+              simulate_typing: checked,
+              typing_seconds: checked ? cfg.typing_seconds ?? 3 : cfg.typing_seconds,
+            });
+          }}
+        />
+      </div>
+
+      {enabled && (
+        <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+          <label className="text-xs text-muted-foreground flex-1">
+            Tempo de exibição (segundos)
+          </label>
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="number"
+              min={1}
+              max={25}
+              value={seconds}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                const clamped = isNaN(val) ? 3 : Math.min(Math.max(val, 1), 25);
+                onUpdateConfig({ typing_seconds: clamped });
+              }}
+              className="h-7 w-16 bg-muted text-xs text-center font-mono"
+            />
+            <span className="text-xs text-muted-foreground">s</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

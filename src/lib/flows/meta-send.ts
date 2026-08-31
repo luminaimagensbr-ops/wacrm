@@ -3,6 +3,7 @@ import {
   sendInteractiveList,
   sendMediaMessage,
   sendTextMessage,
+  sendTypingIndicator,
   type InteractiveButton,
   type InteractiveListSection,
   type MediaKind,
@@ -500,3 +501,48 @@ async function sendInteractiveViaMeta(
 
   return { whatsapp_message_id: waMessageId }
 }
+
+export interface SendTypingEngineArgs {
+  accountId: string
+  contactId: string
+  type?: 'text' | 'audio'
+  messageId?: string
+}
+
+/**
+ * Dispatch a typing indicator ("digitando..." / "gravando áudio...") from the Flows engine.
+ */
+export async function engineSendTypingIndicator(
+  args: SendTypingEngineArgs,
+): Promise<boolean> {
+  const db = supabaseAdmin()
+
+  const { data: contact } = await db
+    .from('contacts')
+    .select('id, phone')
+    .eq('id', args.contactId)
+    .eq('account_id', args.accountId)
+    .maybeSingle()
+  if (!contact?.phone) return false
+
+  const sanitized = sanitizePhoneForMeta(contact.phone)
+  if (!isValidE164(sanitized)) return false
+
+  const { data: config } = await db
+    .from('whatsapp_config')
+    .select('access_token, phone_number_id')
+    .eq('account_id', args.accountId)
+    .single()
+  if (!config) return false
+
+  const accessToken = decrypt(config.access_token)
+
+  return sendTypingIndicator({
+    phoneNumberId: config.phone_number_id,
+    accessToken,
+    to: sanitized,
+    messageId: args.messageId,
+    type: args.type ?? 'text',
+  })
+}
+

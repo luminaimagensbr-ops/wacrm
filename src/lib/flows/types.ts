@@ -32,6 +32,10 @@ export interface SendMessageNodeConfig {
   text: string;
   /** Auto-advance target after the message lands at Meta. */
   next_node_key: string;
+  /** Whether to simulate typing status ("digitando...") before sending. */
+  simulate_typing?: boolean;
+  /** Seconds to simulate typing (1-25 seconds). */
+  typing_seconds?: number;
 }
 
 export interface SendButtonsNodeConfig {
@@ -48,6 +52,10 @@ export interface SendButtonsNodeConfig {
     /** node_key the runner advances to when this button is tapped. */
     next_node_key: string;
   }>;
+  /** Whether to simulate typing status ("digitando...") before sending. */
+  simulate_typing?: boolean;
+  /** Seconds to simulate typing (1-25 seconds). */
+  typing_seconds?: number;
 }
 
 export interface SendListNodeConfig {
@@ -66,6 +74,10 @@ export interface SendListNodeConfig {
       next_node_key: string;
     }>;
   }>;
+  /** Whether to simulate typing status ("digitando...") before sending. */
+  simulate_typing?: boolean;
+  /** Seconds to simulate typing (1-25 seconds). */
+  typing_seconds?: number;
 }
 
 /**
@@ -97,6 +109,10 @@ export interface SendMediaNodeConfig {
   next_node_key: string;
   /** Whether to send as a native WhatsApp voice note (PTT). */
   ptt?: boolean;
+  /** Whether to simulate typing / recording audio status before sending. */
+  simulate_typing?: boolean;
+  /** Seconds to simulate typing (1-25 seconds). */
+  typing_seconds?: number;
 }
 
 export interface HandoffNodeConfig {
@@ -136,6 +152,10 @@ export interface CollectInputNodeConfig {
   regex?: string;
   /** Node to advance to after capture. */
   next_node_key: string;
+  /** Whether to simulate typing status ("digitando...") before sending. */
+  simulate_typing?: boolean;
+  /** Seconds to simulate typing (1-25 seconds). */
+  typing_seconds?: number;
 }
 
 export type ConditionOperator =

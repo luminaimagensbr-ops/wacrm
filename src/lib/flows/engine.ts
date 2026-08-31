@@ -38,6 +38,7 @@ import {
   engineSendInteractiveList,
   engineSendMedia,
   engineSendText,
+  engineSendTypingIndicator,
 } from "./meta-send";
 import { decideFallback, resolveFallbackPolicy } from "./fallback";
 import { addContactTagAndDispatch } from "@/lib/contacts/tag-events";
@@ -395,12 +396,32 @@ async function findEntryFlow(
 // thread can quote the prompt the customer is replying to.
 // ============================================================
 
+async function handleTypingSimulation(
+  run: FlowRunRow,
+  cfg: { simulate_typing?: boolean; typing_seconds?: number },
+  defaultType: "text" | "audio" = "text"
+): Promise<void> {
+  if (!cfg.simulate_typing) return;
+  const seconds = Math.min(Math.max(cfg.typing_seconds ?? 3, 1), 25);
+  try {
+    await engineSendTypingIndicator({
+      accountId: run.account_id,
+      contactId: run.contact_id!,
+      type: defaultType,
+    });
+  } catch (err) {
+    console.warn("[flows] handleTypingSimulation error:", err);
+  }
+  await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+}
+
 async function sendButtonsAndSuspend(
   db: AdminClient,
   run: FlowRunRow,
   node: FlowNodeRow,
 ): Promise<{ outcome: "advanced"; node_key: string }> {
   const cfg = node.config as unknown as SendButtonsNodeConfig;
+  await handleTypingSimulation(run, cfg, "text");
   const { whatsapp_message_id } = await engineSendInteractiveButtons({
     accountId: run.account_id,
     userId: run.user_id,
@@ -437,6 +458,7 @@ async function sendListAndSuspend(
   node: FlowNodeRow,
 ): Promise<{ outcome: "advanced"; node_key: string }> {
   const cfg = node.config as unknown as SendListNodeConfig;
+  await handleTypingSimulation(run, cfg, "text");
   const { whatsapp_message_id } = await engineSendInteractiveList({
     accountId: run.account_id,
     userId: run.user_id,
@@ -638,6 +660,7 @@ async function advanceFromNodeKey(
     if (node.node_type === "send_message") {
       const cfg = node.config as unknown as SendMessageNodeConfig;
       console.log(`[flows] send_message starting for node_key="${node.node_key}", text="${cfg.text}"`);
+      await handleTypingSimulation(run, cfg, "text");
       try {
         const { whatsapp_message_id } = await engineSendText({
           accountId: run.account_id,
@@ -668,6 +691,7 @@ async function advanceFromNodeKey(
     if (node.node_type === "send_media") {
       const cfg = node.config as unknown as SendMediaNodeConfig;
       console.log(`[flows] send_media starting for node_key="${node.node_key}", media_url="${cfg.media_url}"`);
+      await handleTypingSimulation(run, cfg, cfg.media_type === "audio" ? "audio" : "text");
       try {
         const { whatsapp_message_id } = await engineSendMedia({
           accountId: run.account_id,
@@ -706,6 +730,7 @@ async function advanceFromNodeKey(
       // Send the prompt and suspend. Customer's next TEXT reply will
       // wake us up via handleReplyForActiveRun's collect_input branch.
       const cfg = node.config as unknown as CollectInputNodeConfig;
+      await handleTypingSimulation(run, cfg, "text");
       try {
         const { whatsapp_message_id } = await engineSendText({
           accountId: run.account_id,

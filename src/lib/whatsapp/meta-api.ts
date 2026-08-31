@@ -1059,3 +1059,59 @@ export async function downloadMedia(
   const buffer = Buffer.from(await response.arrayBuffer())
   return { buffer, contentType }
 }
+
+// ============================================================
+// Typing Indicator ("digitando..." / "gravando áudio...")
+// ============================================================
+
+export interface SendTypingIndicatorArgs {
+  phoneNumberId: string
+  accessToken: string
+  to?: string
+  messageId?: string
+  type?: 'text' | 'audio'
+}
+
+/**
+  * Send a typing indicator ("digitando..." or "gravando áudio...")
+  * to Meta's WhatsApp Cloud API.
+  *
+  * Safe helper — returns false on error so flow execution is never blocked.
+  */
+export async function sendTypingIndicator(
+  args: SendTypingIndicatorArgs
+): Promise<boolean> {
+  const { phoneNumberId, accessToken, messageId, to, type = 'text' } = args
+  const url = `${META_API_BASE}/${phoneNumberId}/messages`
+
+  const body: Record<string, unknown> = {
+    messaging_product: 'whatsapp',
+    typing_indicator: { type },
+  }
+
+  if (messageId) {
+    body.status = 'read'
+    body.message_id = messageId
+  } else if (to) {
+    body.recipient_type = 'individual'
+    body.to = to
+  } else {
+    return false
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(body),
+    })
+    return response.ok
+  } catch (err) {
+    console.warn('[meta-api] sendTypingIndicator failed:', err)
+    return false
+  }
+}
+
