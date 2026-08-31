@@ -22,6 +22,7 @@ import { supabaseAdmin } from './admin-client'
 import { addContactTagIfAbsent } from '@/lib/contacts/tag-write'
 import { MAX_TAG_CHAIN_DEPTH, getTagChainDepth } from '@/lib/contacts/tag-chain'
 import { engineSendText, engineSendTemplate, engineSendInteractive } from './meta-send'
+import { engineSendTypingIndicator } from '@/lib/flows/meta-send'
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
 
@@ -360,11 +361,29 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
 
   switch (step.step_type) {
     case 'send_message': {
-      const cfg = step.step_config as SendMessageStepConfig
+      const cfg = step.step_config as SendMessageStepConfig & {
+        simulate_typing?: boolean
+        typing_seconds?: number
+      }
       if (!args.contactId) throw new Error('send_message needs a contact')
       const text = interpolate(cfg.text, args)
       if (!text.trim()) throw new Error('send_message has empty text')
       const conversationId = await resolveConversationId(args)
+
+      if (cfg.simulate_typing) {
+        const delaySec = Math.min(Math.max(cfg.typing_seconds ?? 3, 1), 25)
+        try {
+          await engineSendTypingIndicator({
+            accountId: args.automation.account_id,
+            contactId: args.contactId,
+            type: 'text',
+          })
+          await new Promise((r) => setTimeout(r, delaySec * 1000))
+        } catch (err) {
+          console.warn('[automations] sendTypingIndicator failed:', err)
+        }
+      }
+
       const { whatsapp_message_id } = await engineSendText({
         accountId: args.automation.account_id,
         userId: args.automation.user_id,

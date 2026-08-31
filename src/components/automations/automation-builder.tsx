@@ -1305,14 +1305,63 @@ function StepEditor({
   switch (step.step_type) {
     case "send_message":
       return (
-        <FieldBlock label={t("config.messageText")}>
-          <Textarea
-            value={(cfg.text as string) ?? ""}
-            onChange={(e) => set({ text: e.target.value })}
-            placeholder={t("config.placeholderMessageText")}
-            className="min-h-24 bg-muted text-foreground"
-          />
-        </FieldBlock>
+        <div className="space-y-3">
+          <FieldBlock label={t("config.messageText")}>
+            <Textarea
+              value={(cfg.text as string) ?? ""}
+              onChange={(e) => set({ text: e.target.value })}
+              placeholder={t("config.placeholderMessageText")}
+              className="min-h-24 bg-muted text-foreground"
+            />
+          </FieldBlock>
+
+          <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="grid gap-0.5">
+                <span className="text-xs font-medium text-foreground">
+                  Simular digitação
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Exibe 'digitando...' no WhatsApp antes de enviar
+                </span>
+              </div>
+              <Switch
+                checked={Boolean(cfg.simulate_typing)}
+                onCheckedChange={(checked) => {
+                  set({
+                    simulate_typing: checked,
+                    typing_seconds: checked
+                      ? (cfg.typing_seconds as number) ?? 3
+                      : cfg.typing_seconds,
+                  })
+                }}
+              />
+            </div>
+
+            {Boolean(cfg.simulate_typing) && (
+              <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+                <label className="text-xs text-muted-foreground flex-1">
+                  Tempo de exibição (segundos)
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={25}
+                    value={(cfg.typing_seconds as number) ?? 3}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      const clamped = isNaN(val) ? 3 : Math.min(Math.max(val, 1), 25);
+                      set({ typing_seconds: clamped });
+                    }}
+                    className="h-7 w-16 bg-muted text-xs text-center font-mono"
+                  />
+                  <span className="text-xs text-muted-foreground">s</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )
     case "send_buttons":
     case "send_list":
